@@ -47,6 +47,18 @@ def describe(code: int) -> tuple[str, str]:
     return WMO.get(int(code), ("Unknown", "cloud"))
 
 
+def _visibility_km(metres: float | None) -> float:
+    """Visibility in km, keeping a decimal where it matters.
+
+    Rounding 400 m to "0 km" looks like a broken reading rather than the
+    warning it is, so anything under 10 km keeps one decimal place.
+    """
+    if not metres:
+        return 10.0
+    km = metres / 1000
+    return round(km, 1) if km < 10 else round(km)
+
+
 class OpenMeteoSource(Source):
     name = "open-meteo"
     source_url = "https://open-meteo.com"
@@ -91,6 +103,9 @@ class OpenMeteoSource(Source):
                 d_icon,
             ))
 
+        # Sub-kilometre visibility rounds to "0 km", which reads like
+        # missing data when it actually means near-zero — the single most
+        # important number on a mountain pass. Keep one decimal below 10 km.
         visibility_m = cur.get("visibility")
         return {
             "city": city,
@@ -100,7 +115,7 @@ class OpenMeteoSource(Source):
             "icon": icon,
             "wind_kmh": round(cur.get("wind_speed_10m", 0)),
             "humidity": round(cur.get("relative_humidity_2m", 0)),
-            "visibility_km": round(visibility_m / 1000) if visibility_m else 10,
+            "visibility_km": _visibility_km(visibility_m),
             "forecast": forecast,
             "lat": lat,
             "lon": lon,

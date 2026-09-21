@@ -54,6 +54,12 @@ const HAZARDOUS = new Set([56, 57, 65, 66, 67, 71, 73, 75, 77, 82, 85, 86, 95, 9
 
 const describe = (code) => WMO[code] || ['Unknown', 'cloud']
 
+function visibilityKm(metres) {
+  if (!metres) return 10
+  const km = metres / 1000
+  return km < 10 ? Math.round(km * 10) / 10 : Math.round(km)
+}
+
 /** Open-Meteo rate-limits bursts, so cities go out a couple at a time. */
 async function mapLimit(items, limit, fn) {
   const out = []
@@ -102,7 +108,9 @@ export async function fetchWeather(cities) {
       icon,
       wind_kmh: Math.round(cur.wind_speed_10m ?? 0),
       humidity: Math.round(cur.relative_humidity_2m ?? 0),
-      visibility_km: cur.visibility ? Math.round(cur.visibility / 1000) : 10,
+      // Sub-kilometre visibility must not round to "0 km" — on a pass
+      // that is the most important number on the card, not missing data.
+      visibility_km: visibilityKm(cur.visibility),
       forecast,
       elevation_m: Math.round(d.elevation ?? 0),
       driving_hazard: HAZARDOUS.has(code),
