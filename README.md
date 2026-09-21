@@ -357,6 +357,32 @@ Data sources panel.
 
 ---
 
+## Putting the whole thing online
+
+```bash
+./scripts/golive.sh
+```
+
+One command: starts the API if it is not running, opens a public Cloudflare
+tunnel to it, rebuilds the SPA against that URL and deploys to Firebase
+Hosting. The live site then has a real backend — bookings, payments, the
+grounded assistant and live ride matching all work.
+
+**Why a tunnel.** Firebase Hosting serves static files only; it cannot run
+FastAPI or WebSockets. Cloud Run can, but needs billing enabled on the GCP
+project. A Cloudflare quick tunnel needs no account and does support
+WebSockets, so it is the shortest path from "static site" to "working app".
+
+**What it costs you.** The tunnel lives only as long as the machine and the
+process do, and its hostname changes on every restart — hence the rebuild
+and redeploy each time. It is a demo mechanism, not hosting.
+
+**The permanent version** is `render.yaml`: push the repo, create a
+Blueprint on Render (free tier, WebSockets supported), then build once with
+`VITE_API_BASE` set to the Render URL and the address stops moving.
+
+---
+
 ## Deploying
 
 The Docker image builds the SPA and serves it from the same origin as the API, so there is no

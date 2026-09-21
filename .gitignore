@@ -21,3 +21,8 @@ backend/.venv/
 # To enable it:  gh auth refresh -s workflow
 # then delete the line below, and:  git add -f .github && git commit && git push
 .github/workflows/
+
+# tunnel runtime state
+.tunnel.log
+.tunnel.url
+.tunnel.pid
