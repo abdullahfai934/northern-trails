@@ -87,7 +87,7 @@ def feature_report() -> dict:
     """Live/fallback status for every integration, surfaced on /api/health."""
     return {
         "database": "postgis" if DATABASE_URL else "in-memory",
-        "weather": ("openweathermap" if OPENWEATHER_KEY
+        "weather": ("open-meteo+openweathermap" if (POLL_ENABLED and OPENWEATHER_KEY)
                     else "open-meteo" if POLL_ENABLED else "seeded"),
         "hazards": "gdacs+usgs" if POLL_ENABLED else "seeded",
         "roads": "nha+pmd" if POLL_ENABLED else "seeded",

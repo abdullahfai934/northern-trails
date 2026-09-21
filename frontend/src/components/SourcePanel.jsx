@@ -20,6 +20,7 @@ const MODE = {
 
 const NAMES = {
   weather: 'Weather (Open-Meteo)',
+  weather_2nd: 'Weather cross-check (OpenWeatherMap)',
   hazards: 'Hazards (GDACS)',
   seismic: 'Earthquakes (USGS)',
   advisory: 'Advisory (PMD)',

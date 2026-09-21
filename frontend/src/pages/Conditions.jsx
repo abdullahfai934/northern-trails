@@ -120,6 +120,22 @@ export default function Conditions() {
                 <span className="flex items-center gap-1"><Droplets className="h-3 w-3" />{w.humidity}%</span>
                 <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{w.visibility_km} km</span>
               </div>
+              {w.cross_checked && (
+                <div className={`mt-2.5 flex items-start gap-1.5 rounded-lg border px-2 py-1.5 text-[10px] leading-snug
+                  ${w.sources_agree
+                    ? 'border-glacier-400/25 bg-glacier-400/[.07] text-glacier-200'
+                    : 'border-amberz-400/30 bg-amberz-400/10 text-amberz-200'}`}>
+                  <span className="mt-[3px] h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-70" />
+                  <span>
+                    {w.sources_agree
+                      ? `Confirmed by a second provider (${w.second_opinion?.temp_c}°, OpenWeatherMap).`
+                      : `Providers disagree by ${w.temp_gap_c}° — OpenWeatherMap reads ${w.second_opinion?.temp_c}°. Treat with caution.`}
+                    {typeof w.confidence === 'number' && (
+                      <span className="opacity-70"> Confidence {Math.round(w.confidence * 100)}%.</span>
+                    )}
+                  </span>
+                </div>
+              )}
               {w.driving_hazard && (
                 <div className="mt-2.5 rounded-lg border border-amberz-400/25 bg-amberz-400/10 px-2 py-1.5 text-[10px] leading-snug text-amberz-200">
                   Driving conditions affected — allow extra time on this stretch.

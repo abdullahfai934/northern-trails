@@ -150,6 +150,7 @@ export function Footer() {
  */
 const SOURCES = [
   ['Open-Meteo', 'weather + forecast', 'live'],
+  ['OpenWeatherMap', 'second opinion, cross-checked', 'key'],
   ['GDACS (UN/JRC)', 'floods, GLOF, hazards', 'live'],
   ['USGS', 'earthquakes near routes', 'live'],
   ['PMD', 'tourist-region advisory', 'live'],
@@ -160,6 +161,7 @@ const SOURCES = [
 
 const DOT = {
   live: 'bg-glacier-300',
+  key: 'bg-amberz-300/70',
   blocked: 'bg-rose-400/70',
   manual: 'bg-frost-400/50',
 }
@@ -175,6 +177,7 @@ function DataSources() {
           <li key={name} className="flex items-start gap-2 leading-snug">
             <span
               title={state === 'live' ? 'Fetched live' :
+                     state === 'key' ? 'Active once an API key is set' :
                      state === 'blocked' ? 'Reachable only via an official feed' :
                      'Verified by hand — no public registry to query'}
               className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${DOT[state]} ${

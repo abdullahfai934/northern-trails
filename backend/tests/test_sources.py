@@ -138,3 +138,35 @@ def test_source_result_summary_is_serialisable():
     s = SourceResult("x", "live", items=[{"a": 1}]).summary()
     assert set(s) == {"name", "mode", "count", "error", "fetched_at", "source_url"}
     assert s["count"] == 1
+
+
+# ------------------------------------------- dual-provider weather check
+@pytest.mark.parametrize("primary,secondary,agree,confidence", [
+    (14, 14, True, 0.95),
+    (14, 15, True, 0.95),
+    (14, 17, True, 0.88),
+    (14, 22, False, 0.62),
+    (-5, 4, False, 0.62),
+])
+def test_weather_cross_check_scores_provider_agreement(primary, secondary, agree, confidence):
+    """Two independent providers over the same point.
+
+    Mountain models diverge most where terrain is steep — exactly where a
+    traveller most needs to know the reading is uncertain — so a wide gap
+    lowers confidence instead of being hidden behind one number.
+    """
+    from app.sources.poller import ConditionsPoller
+    r = ConditionsPoller._cross_check({"temp_c": primary},
+                                      {"temp_c": secondary, "condition": "Clear"})
+    assert r["sources_agree"] is agree
+    assert r["confidence"] == confidence
+    assert r["cross_checked"] is True
+    assert r["second_opinion"]["temp_c"] == secondary
+
+
+def test_weather_without_a_second_provider_is_not_cross_checked():
+    from app.sources.poller import ConditionsPoller
+    r = ConditionsPoller._cross_check({"temp_c": 14}, None)
+    assert r["cross_checked"] is False
+    assert r["sources_agree"] is None
+    assert r["confidence"] == 0.8

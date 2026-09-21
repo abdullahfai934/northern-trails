@@ -109,16 +109,31 @@ ambiguous.
 
 | Source | What it gives | Status from a server |
 |---|---|---|
-| **Open-Meteo** | Current conditions, 3-day forecast and elevation for 6 towns | **Live** — no key needed (the default) |
+| **Open-Meteo** | Current conditions, 3-day forecast and elevation for 6 towns | **Live** — no key needed (the primary) |
 | **GDACS** (JRC/UN) | Worldwide hazard feed, filtered to a GB/Chitral bounding box | **Live** — no key needed |
 | **USGS** | Earthquakes M4.0+ within 150 km of a tracked road | **Live** — no key needed |
 | **PMD** `weather.gov.pk/nwfc/tourist` | Tourist-region advisory, mapped to routes | **Live** — no key needed |
 | **OSRM** | Real driving distance and duration for ride pricing | **Live** — no key needed |
-| **OpenWeatherMap** | Same as Open-Meteo | Optional upgrade; takes over when a key is set |
+| **OpenWeatherMap** | A second, independent reading of the same six towns | Cross-check; active when `OPENWEATHER_API_KEY` is set |
 | **NHA** `nha.gov.pk` | Road open/closed/restricted | **Blocked** — WAF returns 403 to any automated request |
 
 Five of these need no account, no key and no billing, so a fresh clone has genuinely
 live weather, hazards, seismic activity, advisories and road distances immediately.
+
+### Two weather providers, not one
+
+With `OPENWEATHER_API_KEY` set, OpenWeatherMap runs **alongside** Open-Meteo rather
+than replacing it, and the two readings for each town are compared:
+
+| Temperature gap | Confidence | Shown as |
+|---|---|---|
+| ≤ 1 °C | 0.95 | *Confirmed by a second provider* |
+| ≤ 3 °C | 0.88 | *Confirmed by a second provider* |
+| > 3 °C | 0.62 | *Providers disagree by N° — treat with caution* |
+
+This is worth the extra call because forecast models diverge most over steep terrain,
+which is precisely where the reading matters and where a single number is least
+trustworthy. Saying so is more useful than quietly picking one.
 Earthquakes matter here because they trigger the rockfall that shuts the KKH, so a
 tremor near a route is a reason to treat that road with caution.
 

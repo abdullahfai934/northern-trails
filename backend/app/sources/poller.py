@@ -50,10 +50,13 @@ async def _persist(**kwargs) -> None:
 
 class ConditionsPoller:
     def __init__(self) -> None:
-        # Open-Meteo is the default because it needs no key, so a fresh
-        # clone has genuinely live weather. OpenWeatherMap takes over when
-        # a key is present.
-        self.weather = OpenWeatherSource() if OPENWEATHER_KEY else OpenMeteoSource()
+        # Open-Meteo is the primary because it needs no key, so a fresh
+        # clone has genuinely live weather. OpenWeatherMap runs alongside
+        # it when a key is present: two independent providers measuring the
+        # same place let the app say how much to trust the reading, rather
+        # than asking the user to take one model's word for it.
+        self.weather = OpenMeteoSource()
+        self.weather_secondary = OpenWeatherSource() if OPENWEATHER_KEY else None
         self.gdacs = GdacsSource()
         self.usgs = UsgsSource()
         self.pmd = PmdSource()
@@ -75,11 +78,49 @@ class ConditionsPoller:
             row.setdefault("origin", "seed")
 
     # --------------------------------------------------------------- weather
+    @staticmethod
+    def _cross_check(primary: dict, secondary: dict | None) -> dict:
+        """Compare two providers for the same city and score the agreement.
+
+        Mountain weather models diverge most where terrain is steep, which
+        is exactly where a traveller most needs to know the reading is
+        uncertain. A wide gap lowers confidence rather than being hidden.
+        """
+        if not secondary:
+            return {"confidence": 0.8, "sources_agree": None,
+                    "cross_checked": False}
+        gap = abs(primary["temp_c"] - secondary["temp_c"])
+        agree = gap <= 3
+        confidence = 0.95 if gap <= 1 else 0.88 if gap <= 3 else 0.62
+        return {
+            "confidence": confidence,
+            "sources_agree": agree,
+            "cross_checked": True,
+            "temp_gap_c": gap,
+            "second_opinion": {
+                "source": "OpenWeatherMap",
+                "temp_c": secondary["temp_c"],
+                "condition": secondary["condition"],
+            },
+        }
+
     async def refresh_weather(self) -> SourceResult:
-        res = await self.weather.run()
+        """Open-Meteo is authoritative; OpenWeatherMap corroborates it."""
+        if self.weather_secondary is not None:
+            res, second = await asyncio.gather(
+                self.weather.run(), self.weather_secondary.run())
+            self.results["weather_2nd"] = second
+        else:
+            res, second = await self.weather.run(), None
         self.results["weather"] = res
         if not res.ok:
             return res
+
+        by_city_2nd = {}
+        if second is not None and second.ok:
+            by_city_2nd = {w["city"]: w for w in second.items}
+        for row in res.items:
+            row.update(self._cross_check(row, by_city_2nd.get(row["city"])))
         by_city = {w["city"]: w for w in data.WEATHER}
         for row in res.items:
             row["origin"] = self.weather.name
