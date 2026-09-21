@@ -272,6 +272,41 @@ sandbox runs the identical flow.
 
 ---
 
+## Testing
+
+```bash
+backend/.venv/bin/python -m pytest        # from backend/
+```
+
+71 tests, no network and no database required — the suite runs anywhere,
+which is why CI needs no secrets.
+
+| Area | What it covers |
+|---|---|
+| `test_geo.py` | route/city coordinate coverage, hazard-to-road attribution, region bounds |
+| `test_sources.py` | NHA parsing and status grading, PMD severity, WMO codes, graceful degradation |
+| `test_payments.py` | JazzCash and Easypaisa signing, callback forgery rejection, reference uniqueness |
+| `test_auth.py` | token signature, audience, issuer, expiry and forgery rejection |
+| `test_api.py` | region guard, booking lifecycle, double-payment, grounded citations |
+
+Several are regression tests for bugs found during development, and each one
+says so in its docstring:
+
+- a flood in **Thailand** was attributed to a Deosai road, because
+  `nearest_routes` had no distance ceiling
+- an authority's stated road status of **"Caution"** was overridden to
+  `restricted` by the phrase *"single lane"* elsewhere in the row
+- **transaction references collided within 200 draws** — 4 hex characters of
+  entropy on the payments-table primary key
+- a **forged payment callback** must never confirm a booking
+- the bundled offline snapshot shipped **without the package→operator join**,
+  which blanked the entire site
+
+CI (`.github/workflows/ci.yml`) runs the backend suite, a production frontend
+build and a Docker image build on every push.
+
+---
+
 ## Running locally
 
 Requires Node 18+ and Python 3.11+.

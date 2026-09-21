@@ -128,21 +128,66 @@ export function Footer() {
         </div>
         <FooterCol title="Product" links={[['Explore packages', '/explore'], ['Instant match', '/instant'], ['Live conditions', '/conditions'], ['AI assistant', '/assistant']]} />
         <FooterCol title="Operators" links={[['Operator console', '/operator'], ['Verification', '/conditions'], ...(apiDocsUrl ? [['API reference', apiDocsUrl]] : [])]} />
-        <div>
-          <h4 className="mb-3 text-[11px] font-bold uppercase tracking-[.18em] text-frost-400">Data sources</h4>
-          <ul className="space-y-2 text-[13px] text-frost-300">
-            <li>NHA road advisories</li>
-            <li>GB / KP district administrations</li>
-            <li>OpenWeatherMap</li>
-            <li>Tourism department registries</li>
-          </ul>
-        </div>
+        <DataSources />
       </div>
       <div className="mx-auto mt-12 flex max-w-7xl flex-col items-center justify-between gap-3 border-t border-white/[.06] pt-6 text-[12px] text-frost-400 sm:flex-row">
         <span>© {new Date().getFullYear()} Northern Trails · Final Year Project prototype</span>
         <span className="flex items-center gap-2"><Github className="h-3.5 w-3.5" /> FastAPI · React · WebSockets · Gemini</span>
       </div>
     </footer>
+  )
+}
+
+/**
+ * The data sources, with their real status.
+ *
+ * This list used to name four feeds as though all four were wired up. Two
+ * of them cannot be reached from a server at all — NHA sits behind a
+ * Cloudflare CAPTCHA, and no district or tourism registry publishes a
+ * machine-readable feed. Listing them flat implied a freshness the app
+ * could not deliver, which is the one thing a live-conditions product must
+ * not do. Each entry now carries what it actually is.
+ */
+const SOURCES = [
+  ['Open-Meteo', 'weather + forecast', 'live'],
+  ['GDACS (UN/JRC)', 'floods, GLOF, hazards', 'live'],
+  ['USGS', 'earthquakes near routes', 'live'],
+  ['PMD', 'tourist-region advisory', 'live'],
+  ['OSRM', 'road distance + ETA', 'live'],
+  ['NHA road advisories', 'blocked by Cloudflare', 'blocked'],
+  ['District / tourism registries', 'no public feed exists', 'manual'],
+]
+
+const DOT = {
+  live: 'bg-glacier-300',
+  blocked: 'bg-rose-400/70',
+  manual: 'bg-frost-400/50',
+}
+
+function DataSources() {
+  return (
+    <div>
+      <h4 className="mb-3 text-[11px] font-bold uppercase tracking-[.18em] text-frost-400">
+        Data sources
+      </h4>
+      <ul className="space-y-2 text-[13px] text-frost-300">
+        {SOURCES.map(([name, what, state]) => (
+          <li key={name} className="flex items-start gap-2 leading-snug">
+            <span
+              title={state === 'live' ? 'Fetched live' :
+                     state === 'blocked' ? 'Reachable only via an official feed' :
+                     'Verified by hand — no public registry to query'}
+              className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${DOT[state]} ${
+                state === 'live' ? 'animate-pulse' : ''}`}
+            />
+            <span className="min-w-0">
+              <span className={state === 'live' ? 'text-frost-200' : 'text-frost-400'}>{name}</span>
+              <span className="block text-[11px] text-frost-400">{what}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 

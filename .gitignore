@@ -16,3 +16,8 @@ backend/.venv/
 *-debug.log
 .emulator.log
 .emulator.pid
+
+# Pushing CI needs the `workflow` OAuth scope, which this token lacks.
+# To enable it:  gh auth refresh -s workflow
+# then delete the line below, and:  git add -f .github && git commit && git push
+.github/workflows/

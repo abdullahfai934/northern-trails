@@ -27,7 +27,7 @@ export default function Conditions() {
         <SectionTitle
           eyebrow="Live conditions layer"
           title="Every route, tracked and timestamped."
-          sub="Road status from NHA and district administrations, weather from OpenWeatherMap, permits from park and tourism offices, plus crowd-sourced traveler reports — fused per route with a confidence score."
+          sub="Live weather from Open-Meteo, hazards from GDACS, earthquakes from USGS and the PMD tourist advisory — fused per route with a confidence score and a provenance tag on every record. Road status is the seeded baseline until an official NHA feed is available."
         />
       </Reveal>
 

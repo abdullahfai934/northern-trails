@@ -200,7 +200,7 @@ function ConditionsStrip({ routes = [], weather = [] }) {
         <SectionTitle
           eyebrow="Live conditions layer"
           title="Roads, weather and permits — tracked per route."
-          sub="Pulled from NHA advisories, district administrations, OpenWeatherMap and crowd-sourced traveler reports, then attached to every trip that touches the route."
+          sub="Live weather, hazard and seismic feeds fused per route, then attached to every trip that touches it — each record tagged with where it came from and when."
           right={<Link to="/conditions" className="btn-ghost !py-2.5 !text-[13px]"><Radio className="h-3.5 w-3.5" /> All routes</Link>}
         />
 

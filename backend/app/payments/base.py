@@ -10,15 +10,49 @@ gateways use hosted-checkout redirects rather than a JSON API.
 """
 from __future__ import annotations
 
+import itertools
+import random
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
 
+#: JazzCash caps pp_TxnRefNo at 20 characters, so the whole reference must
+#: fit that budget. Base36 buys the room a decimal timestamp wastes:
+#: 2 prefix + 6 epoch + 4 sequence + 8 random = 20.
+_TXN_MAX = 20
+_counter = itertools.count(random.randrange(36 ** 4))
+
+
+def _b36(n: int, width: int) -> str:
+    digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    out = ""
+    for _ in range(width):
+        n, r = divmod(n, 36)
+        out = digits[r] + out
+    return out
+
+
 def txn_ref(prefix: str = "NT") -> str:
-    """A transaction reference unique per attempt, not per booking."""
-    stamp = datetime.now(timezone.utc).strftime("%y%m%d%H%M%S")
-    return f"{prefix}{stamp}{uuid.uuid4().hex[:4].upper()}"
+    """A transaction reference unique per attempt, not per booking.
+
+    Randomness alone is not enough. Four hex characters gave 65,536 values
+    inside one second, which collides by the birthday bound after a few
+    hundred references — and this is the primary key of the payments
+    table, so a collision would cross two real transactions.
+
+    The sequence counter is what actually guarantees uniqueness: 36^4 is
+    1.68 million values, far beyond what one process issues in a second,
+    so it cannot wrap and repeat. The random tail then keeps references
+    unguessable and safe across multiple workers, and the base36 epoch
+    keeps the whole thing inside JazzCash's 20-character limit.
+    """
+    epoch = _b36(int(datetime.now(timezone.utc).timestamp()), 6)
+    seq = _b36(next(_counter), 4)
+    tail = _b36(random.getrandbits(41), 8)
+    ref = f"{prefix}{epoch}{seq}{tail}"
+    assert len(ref) <= _TXN_MAX, ref
+    return ref
 
 
 @dataclass

@@ -170,7 +170,14 @@ function friendly(err) {
     'auth/invalid-verification-code': 'That code is not correct. Check and re-enter it.',
     'auth/code-expired': 'That code expired. Request a new one.',
     'auth/quota-exceeded': 'The daily SMS quota for this project is used up.',
-    'auth/operation-not-allowed': 'Phone sign-in is not enabled in the Firebase console.',
+    // Firebase returns this for two very different causes, and saying only
+    // the first sends you hunting in the wrong place — as it did here.
+    'auth/operation-not-allowed':
+      'Phone sign-in is blocked for this number. Either the Phone provider is off, '
+      + 'or this country is not in the project\'s SMS region allowlist.',
+    'auth/invalid-app-credential': 'Verification failed — reload the page and try again.',
+    'auth/missing-phone-number': 'Enter a mobile number first.',
+    'auth/network-request-failed': 'Network problem reaching Firebase. Check your connection.',
     'auth/captcha-check-failed': 'Verification failed. Reload the page and try again.',
   }
   return map[code] || err?.message || 'Something went wrong. Try again.'
