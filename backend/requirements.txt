@@ -1,0 +1,22 @@
+# --- core API ---
+fastapi==0.141.1
+uvicorn[standard]==0.38.0
+httpx==0.28.1
+pydantic==2.12.3
+python-multipart==0.0.20
+python-dotenv==1.0.1
+
+# --- PostgreSQL + PostGIS ---
+SQLAlchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+GeoAlchemy2==0.15.2
+
+# --- live-conditions scrapers ---
+beautifulsoup4==4.12.3
+lxml==5.3.0
+
+# --- Firebase phone auth (ID-token verification) ---
+PyJWT[crypto]==2.10.1
+
+# --- Firebase Cloud Messaging (service-account OAuth) ---
+google-auth==2.36.0

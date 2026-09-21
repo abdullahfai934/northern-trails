@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+
+* { -webkit-tap-highlight-color: transparent; }
+
+html, body, #root { height: 100%; }
+
+body {
+  @apply bg-ink-950 text-frost-100 font-sans antialiased;
+  background-image:
+    radial-gradient(70% 50% at 15% -5%, rgba(56,201,214,.14), transparent 60%),
+    radial-gradient(50% 40% at 90% 0%, rgba(245,183,61,.10), transparent 60%),
+    radial-gradient(60% 50% at 50% 110%, rgba(99,102,241,.14), transparent 60%);
+  background-attachment: fixed;
+  overflow-x: hidden;
+}
+
+/* fine film grain keeps the large gradients from banding */
+body::after {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 60; opacity: .035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(147,174,212,.18); border-radius: 99px; border: 3px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: rgba(147,174,212,.34); background-clip: content-box; }
+
+@layer components {
+  .glass {
+    @apply border border-white/[.07] bg-white/[.035] backdrop-blur-xl;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 24px 60px -34px rgba(0,0,0,.9);
+  }
+  .glass-strong {
+    @apply border border-white/[.1] bg-ink-900/80 backdrop-blur-2xl;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 32px 80px -40px rgba(0,0,0,.95);
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[.04]
+           px-3 py-1 text-[11px] font-medium tracking-wide text-frost-200;
+  }
+  .btn {
+    @apply relative inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold
+           transition-all duration-300 active:scale-[.97] disabled:opacity-40 disabled:pointer-events-none;
+  }
+  .btn-primary {
+    @apply btn text-ink-950;
+    background: linear-gradient(120deg, #7ee0e6, #38c9d6 45%, #f5b73d);
+    box-shadow: 0 14px 40px -16px rgba(56,201,214,.7);
+  }
+  .btn-primary:hover { box-shadow: 0 18px 50px -14px rgba(56,201,214,.85); transform: translateY(-1px); }
+  .btn-ghost { @apply btn border border-white/10 bg-white/[.04] text-frost-100 hover:bg-white/[.08]; }
+  .field {
+    @apply w-full rounded-xl border border-white/10 bg-ink-900/70 px-4 py-3 text-sm text-frost-50
+           outline-none transition placeholder:text-frost-400/70
+           focus:border-glacier-400/60 focus:ring-4 focus:ring-glacier-400/10;
+  }
+  .label { @apply mb-1.5 block text-[11px] font-semibold uppercase tracking-[.14em] text-frost-400; }
+  .hairline { @apply h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+}
+
+@layer utilities {
+  .text-gradient {
+    background: linear-gradient(115deg, #f4f8ff 8%, #7ee0e6 46%, #f5b73d 92%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .mask-fade-r { mask-image: linear-gradient(to right, #000 75%, transparent); }
+  .perspective { perspective: 1400px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
+/* filter range slider */
+.nt-range { @apply h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/10; }
+.nt-range::-webkit-slider-thumb {
+  @apply h-4 w-4 appearance-none rounded-full border-2 border-ink-950 bg-glacier-300;
+  box-shadow: 0 0 0 4px rgba(56,201,214,.18);
+}
+.nt-range::-moz-range-thumb {
+  @apply h-4 w-4 rounded-full border-2 border-ink-950 bg-glacier-300;
+}

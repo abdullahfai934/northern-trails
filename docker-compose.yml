@@ -1,0 +1,55 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: northern
+      POSTGRES_PASSWORD: northern
+      POSTGRES_DB: northern_trails
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U northern -d northern_trails"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  northern-trails:
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Tables and seed data are created automatically on first boot.
+      DATABASE_URL: "postgresql://northern:northern@db:5432/northern_trails"
+
+      # Optional — without it the assistant runs its deterministic grounded engine.
+      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
+      GEMINI_MODEL: "${GEMINI_MODEL:-gemini-2.0-flash}"
+
+      # Optional — live weather. Without it the seeded rows stand.
+      OPENWEATHER_API_KEY: "${OPENWEATHER_API_KEY:-}"
+      POLL_ENABLED: "${POLL_ENABLED:-1}"
+
+      # Optional — phone OTP auth and push.
+      FIREBASE_PROJECT_ID: "${FIREBASE_PROJECT_ID:-}"
+      AUTH_REQUIRED: "${AUTH_REQUIRED:-0}"
+      FCM_SERVICE_ACCOUNT_JSON: "${FCM_SERVICE_ACCOUNT_JSON:-}"
+
+      # Optional — payments. Falls back to the sandbox gateway.
+      PAYMENTS_PROVIDER: "${PAYMENTS_PROVIDER:-mock}"
+      PAYMENTS_RETURN_URL: "${PAYMENTS_RETURN_URL:-http://localhost:8000/pay/return}"
+      JAZZCASH_MERCHANT_ID: "${JAZZCASH_MERCHANT_ID:-}"
+      JAZZCASH_PASSWORD: "${JAZZCASH_PASSWORD:-}"
+      JAZZCASH_INTEGRITY_SALT: "${JAZZCASH_INTEGRITY_SALT:-}"
+      EASYPAISA_STORE_ID: "${EASYPAISA_STORE_ID:-}"
+      EASYPAISA_HASH_KEY: "${EASYPAISA_HASH_KEY:-}"
+
+      CORS_ORIGINS: "*"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
