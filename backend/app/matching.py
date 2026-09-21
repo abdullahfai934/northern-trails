@@ -164,6 +164,9 @@ class Hub:
             "expires_in": RESPONSE_WINDOW_SEC,
             "offers": [],
             "accepted_by": None,
+            #: operator ids this request was actually fanned out to, so the
+            #: operator console can show only their own jobs
+            "notified": [],
             **req,
             **quote,
         }
@@ -202,6 +205,9 @@ class Hub:
                 "request": self._public(req),
                 "expires_in": RESPONSE_WINDOW_SEC,
             })
+            req.setdefault("notified", [])
+            if op["id"] not in req["notified"]:
+                req["notified"].append(op["id"])
             await self.to_traveler(req["traveler_id"], {
                 "type": "search.notified",
                 "operator": self._op_card(op),
@@ -339,6 +345,48 @@ class Hub:
 
     def open_jobs(self) -> List[dict]:
         return [self._public(r) for r in self.requests.values() if r["status"] == "searching"]
+
+    def open_jobs_for(self, operator_id: str) -> List[dict]:
+        """Only the jobs this operator was actually dispatched, and has not
+        already bid on. Returning every open job let any operator bid on
+        work that was never offered to them."""
+        out = []
+        for r in self.requests.values():
+            if r["status"] != "searching":
+                continue
+            if operator_id not in (r.get("notified") or []):
+                continue
+            if any(o["operator"]["id"] == operator_id for o in r.get("offers", [])):
+                continue
+            out.append(self._public(r))
+        return out
+
+    def jobs_bid_on(self, operator_id: str) -> List[dict]:
+        return [self._public(r) for r in self.requests.values()
+                if any(o["operator"]["id"] == operator_id for o in r.get("offers", []))
+                and r["status"] == "searching"]
+
+    def active_jobs_for(self, operator_id: str) -> List[dict]:
+        """Jobs this operator won and is now running."""
+        return [self._public(r) for r in self.requests.values()
+                if r.get("accepted_by")
+                and r["accepted_by"]["operator"]["id"] == operator_id]
+
+    def operator_stats(self, operator_id: str) -> dict:
+        won = self.active_jobs_for(operator_id)
+        completed = [r for r in won if r.get("stage") == "completed"]
+        offered = sum(1 for r in self.requests.values()
+                      if operator_id in (r.get("notified") or []))
+        bids = sum(1 for r in self.requests.values()
+                   for o in r.get("offers", []) if o["operator"]["id"] == operator_id)
+        return {
+            "offered": offered,
+            "bids": bids,
+            "won": len(won),
+            "completed": len(completed),
+            "earnings_pkr": sum(r["accepted_by"]["price_pkr"] for r in won),
+            "win_rate": round(len(won) / bids, 2) if bids else 0.0,
+        }
 
 
 hub = Hub()

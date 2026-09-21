@@ -19,7 +19,7 @@ from . import payments as pay
 from .config import PAYMENTS_RETURN_URL, feature_report
 from .db import repo
 from .db import session as dbsession
-from .matching import hub
+from .matching import RESPONSE_WINDOW_SEC, hub
 from .sources.poller import poller
 
 log = logging.getLogger("northern_trails")
@@ -326,15 +326,56 @@ async def accept_offer(request_id: str, body: AcceptIn):
     return req
 
 
+def _require_operator(operator_id: str) -> dict:
+    """Reject unknown operator ids.
+
+    Without this the console accepted any string: a made-up id returned a
+    job list and could toggle availability, writing phantom entries into
+    the dispatcher's state.
+    """
+    op = data.operator_index().get(operator_id)
+    if not op:
+        raise HTTPException(404, f"No verified operator with id '{operator_id}'")
+    return op
+
+
 @app.get("/api/operators/{operator_id}/jobs")
 def operator_jobs(operator_id: str):
-    return {"open": hub.open_jobs(), "available": hub.availability.get(operator_id, True)}
+    """This operator's own work queue.
+
+    Scoped deliberately: `open` lists only requests actually dispatched to
+    them and not yet bid on, rather than every open request on the
+    platform, which would let anyone bid on work never offered to them.
+    """
+    op = _require_operator(operator_id)
+    return {
+        "operator_id": operator_id,
+        "operator": op["name"],
+        "available": hub.availability.get(operator_id, True),
+        "open": hub.open_jobs_for(operator_id),
+        "awaiting": hub.jobs_bid_on(operator_id),
+        "active": hub.active_jobs_for(operator_id),
+        "stats": hub.operator_stats(operator_id),
+        "response_window_sec": RESPONSE_WINDOW_SEC,
+    }
+
+
+@app.get("/api/operators/{operator_id}")
+def operator_detail(operator_id: str):
+    op = _require_operator(operator_id)
+    return {**op,
+            "available": hub.availability.get(operator_id, True),
+            "stats": hub.operator_stats(operator_id),
+            "packages": [p["id"] for p in data.PACKAGES
+                         if p["operator_id"] == operator_id]}
 
 
 @app.post("/api/operators/{operator_id}/availability")
 def set_availability(operator_id: str, body: AvailabilityIn):
+    _require_operator(operator_id)
     hub.set_availability(operator_id, body.available)
-    return {"operator_id": operator_id, "available": body.available}
+    return {"operator_id": operator_id, "available": body.available,
+            "open_jobs": len(hub.open_jobs_for(operator_id))}
 
 
 

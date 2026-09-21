@@ -7,6 +7,7 @@ import {
 
 import { useData, travelerId } from '../lib/store'
 import { api, pkr, wsUrl } from '../lib/api'
+import { fetchRoute } from '../lib/liveDirect'
 import { Reveal, SectionTitle, Stars, ease, useToast } from '../components/ui'
 
 const STAGE_STEPS = [
@@ -94,11 +95,25 @@ export default function Instant() {
     const timer = setTimeout(() => {
       api.tripQuote({ service, pickup, dropoff, passengers })
         .then((q) => { if (alive) { setQuote(q); setQuoteError('') } })
-        .catch((err) => { if (alive) { setQuote(null); setQuoteError(cleanError(err.message)) } })
+        .catch(async (err) => {
+          if (!alive) return
+          // No backend: OSRM allows direct browser calls, so the distance
+          // and duration can still be real. Only the fare formula lives
+          // server-side, so price it here from the service rates.
+          const route = await fetchRoute(pickup, dropoff).catch(() => null)
+          if (!alive) return
+          if (route) {
+            setQuote({ ...route, ...localFare(d, service, route.distance_km, passengers) })
+            setQuoteError('')
+          } else {
+            setQuote(null)
+            setQuoteError(cleanError(err.message))
+          }
+        })
         .finally(() => { if (alive) setQuoting(false) })
     }, 250)
     return () => { alive = false; clearTimeout(timer); }
-  }, [service, pickup, dropoff, passengers, phase])
+  }, [service, pickup, dropoff, passengers, phase, d])
 
   /* ------------------------------------------- real, persisted history */
   useEffect(() => {
@@ -582,4 +597,22 @@ function RideHistory({ items }) {
       </div>
     </Reveal>
   )
+}
+
+/**
+ * Fare computed in the browser, using the same rates the API uses.
+ *
+ * Only reached when the backend is unreachable. Guides and porters are
+ * day-rated (per_km is 0), so distance must not inflate them.
+ */
+function localFare(d, serviceId, km, passengers) {
+  const svc = (d?.services || []).find((s) => s.id === serviceId) || (d?.services || [])[0]
+  if (!svc) return { estimate_pkr: 0, priced_on: 'distance' }
+  const byDistance = svc.per_km > 0
+  let price = svc.base_pkr + (byDistance ? svc.per_km * km : 0)
+  if (passengers > 4) price = Math.round(price * 1.25)
+  return {
+    estimate_pkr: Math.round(price / 500) * 500,
+    priced_on: byDistance ? 'distance' : 'day-rate',
+  }
 }
