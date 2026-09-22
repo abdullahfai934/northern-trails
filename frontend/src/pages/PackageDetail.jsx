@@ -7,11 +7,13 @@ import {
 } from 'lucide-react'
 
 import { api, pkr, relTime, postToGateway } from '../lib/api'
+import { useData } from '../lib/store'
 import { Scene, sceneFor } from '../lib/scenes'
 import { Reveal, Sheet, Skeleton, StatusPill, Stars, ease, useToast } from '../components/ui'
 
 export default function PackageDetail() {
   const { id } = useParams()
+  const d = useData() || {}
   const [pkg, setPkg] = useState(null)
   const [booking, setBooking] = useState(false)
   const [paying, setPaying] = useState(false)
@@ -25,9 +27,43 @@ export default function PackageDetail() {
   const { scrollY } = useScroll()
   const heroY = useTransform(scrollY, [0, 500], [0, 120])
 
-  useEffect(() => { api.package(id).then(setPkg).catch(() => setPkg(false)) }, [id])
+  /* The detail view fetches its own package so it gets the joined route
+     conditions and active alerts. If that call fails the trip has not
+     stopped existing — the API is simply unreachable — so fall back to the
+     copy already loaded by the store and rebuild those two fields locally.
+     Reporting "Trip not found" for a network error sent people looking for
+     a missing package that was there all along. */
+  useEffect(() => {
+    let alive = true
+    api.package(id)
+      .then((p) => { if (alive) setPkg(p) })
+      .catch(() => {
+        if (!alive) return
+        const local = (d.packages || []).find((p) => p.id === id)
+        if (!local) { setPkg(false); return }
+        const routes = local.routes || []
+        setPkg({
+          ...local,
+          route_conditions: (d.routes || []).filter((r) => routes.includes(r.id)),
+          active_alerts: (d.alerts || []).filter(
+            (a) => (a.routes || []).some((r) => routes.includes(r))),
+          offline: true,
+        })
+      })
+    return () => { alive = false }
+  }, [id, d.packages, d.routes, d.alerts])
 
-  if (pkg === false) return <div className="mx-auto max-w-3xl px-5 py-32 text-center text-frost-300">Trip not found.</div>
+  if (pkg === false) return (
+    <div className="mx-auto max-w-3xl px-5 py-32 text-center">
+      <p className="text-frost-100">No trip with that id.</p>
+      <p className="mt-2 text-[13px] text-frost-400">
+        It may have been removed, or the link is wrong.
+      </p>
+      <Link to="/explore" className="btn-primary mt-6 inline-flex">
+        <ArrowLeft className="h-4 w-4" /> Back to all packages
+      </Link>
+    </div>
+  )
   if (!pkg) return (
     <div className="mx-auto max-w-5xl px-5 py-16 sm:px-8">
       <Skeleton className="h-72 rounded-3xl" />
@@ -35,6 +71,8 @@ export default function PackageDetail() {
       <Skeleton className="mt-3 h-24" />
     </div>
   )
+
+  const stale = pkg.offline === true
 
   const submit = async () => {
     try {
@@ -96,6 +134,12 @@ export default function PackageDetail() {
       <div className="mx-auto grid max-w-5xl gap-8 px-5 pt-10 sm:px-8 lg:grid-cols-[1fr_320px]">
         <div className="space-y-10">
           {/* live conditions on this route */}
+          {stale && (
+            <div className="mb-3 rounded-xl border border-amberz-400/25 bg-amberz-400/10 px-3 py-2 text-[11px] leading-snug text-amberz-200">
+              Showing saved details — the live API is unreachable, so the route
+              conditions below may not be current.
+            </div>
+          )}
           {pkg.route_conditions?.length > 0 && (
             <Reveal>
               <h2 className="mb-4 text-[11px] font-bold uppercase tracking-[.18em] text-frost-400">Conditions on this route right now</h2>
