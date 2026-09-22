@@ -26,3 +26,9 @@ backend/.venv/
 .tunnel.log
 .tunnel.url
 .tunnel.pid
+
+# editor state — VS Code's IntelliSense db reached 1.5 GB here
+.vscode/
+.idea/
+*.vc.db*
+

@@ -14,7 +14,10 @@ import pathlib
 from dotenv import load_dotenv
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-load_dotenv(ROOT / ".env")
+# `override=False` so a variable already set in the environment wins over
+# .env — that is what lets the test suite neutralise local settings, and
+# what lets a deployment override the file it ships with.
+load_dotenv(ROOT / ".env", override=False)
 
 
 def _flag(name: str, default: str = "") -> str:
