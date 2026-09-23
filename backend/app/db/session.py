@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from sqlalchemy.ext.asyncio import (AsyncSession, async_sessionmaker,
                                     create_async_engine)
@@ -23,13 +24,31 @@ _engine = None
 _sessionmaker: async_sessionmaker[AsyncSession] | None = None
 
 
+#: libpq-only query options that asyncpg rejects. Hosted providers (Neon,
+#: Render, Supabase) put them in the URLs they hand out.
+_LIBPQ_ONLY = ("sslmode", "channel_binding", "sslrootcert", "gssencmode", "target_session_attrs")
+
+
 def normalized_url(url: str) -> str:
-    """Accept the postgres:// URLs that Render/Railway hand out."""
+    """Accept the postgres:// URLs that Render/Railway/Neon hand out."""
+    return split_url(url)[0]
+
+
+def split_url(url: str) -> tuple[str, dict]:
+    """(asyncpg URL, connect_args): libpq SSL options become asyncpg's `ssl`."""
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql://", 1)
     if url.startswith("postgresql://"):
         url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
-    return url
+    parts = urlsplit(url)
+    query = parse_qsl(parts.query, keep_blank_values=True)
+    sslmode = next((v for k, v in query if k == "sslmode"), "")
+    kept = [(k, v) for k, v in query if k not in _LIBPQ_ONLY]
+    url = urlunsplit(parts._replace(query=urlencode(kept)))
+    connect_args = {}
+    if sslmode in ("require", "verify-ca", "verify-full"):
+        connect_args["ssl"] = "require" if sslmode == "require" else True
+    return url, connect_args
 
 
 def enabled() -> bool:
@@ -41,7 +60,8 @@ def engine():
     if _engine is None:
         if not DATABASE_URL:
             raise RuntimeError("DATABASE_URL is not configured")
-        _engine = create_async_engine(normalized_url(DATABASE_URL), echo=DB_ECHO,
+        url, connect_args = split_url(DATABASE_URL)
+        _engine = create_async_engine(url, echo=DB_ECHO, connect_args=connect_args,
                                       pool_pre_ping=True, pool_size=5, max_overflow=5)
         _sessionmaker = async_sessionmaker(_engine, expire_on_commit=False)
     return _engine
