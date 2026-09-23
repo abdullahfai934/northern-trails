@@ -13,8 +13,8 @@ from datetime import datetime, timezone
 from sqlalchemy import func, select, text
 
 from ..geo import CITY_COORDS
-from .models import (Alert, Booking, DeviceToken, Operator, Payment, Route,
-                     TripRequest, User, Weather)
+from .models import (Alert, Booking, DeviceToken, Operator, Package, PackageImage,
+                     Payment, Route, TripRequest, User, Weather)
 from .session import enabled, session
 
 log = logging.getLogger("northern_trails.repo")
@@ -279,6 +279,99 @@ async def trips_for_traveler(traveler_id: str, limit: int = 20) -> list[dict]:
     except Exception:
         log.exception("trips_for_traveler failed")
         return []
+
+
+# --------------------------------------------------------- admin packages
+_MEM_IMAGES: dict[str, tuple[str, bytes]] = {}
+
+#: Package fields that map one-to-one onto columns.
+PACKAGE_FIELDS = ("id", "operator_id", "title", "days", "price_pkr", "pickup", "destination",
+                  "group_size", "rating", "reviews", "difficulty", "hero", "tags", "includes",
+                  "excludes", "routes", "itinerary", "highlight", "photo_query", "images",
+                  "operator_url", "whatsapp", "source")
+
+
+async def save_package(pkg: dict) -> bool:
+    """Insert or update a package. True when it was durably stored."""
+    if not enabled():
+        return False
+    try:
+        row = {k: pkg.get(k) for k in PACKAGE_FIELDS if k in pkg}
+        row["itinerary"] = [list(i) for i in pkg.get("itinerary", [])]
+        async with session() as s:
+            await s.merge(Package(**row))
+            await s.commit()
+        return True
+    except Exception:
+        log.exception("save_package failed")
+        return False
+
+
+async def delete_package(package_id: str) -> bool:
+    """Remove a package, unless bookings refer to it (those must keep their trip)."""
+    if not enabled():
+        return False
+    try:
+        async with session() as s:
+            booked = (await s.execute(select(func.count()).select_from(Booking)
+                                      .where(Booking.package_id == package_id))).scalar() or 0
+            row = await s.get(Package, package_id)
+            if not row:
+                return False
+            if booked:
+                # Keep the row so booking history still resolves; stop listing it.
+                row.source = "archived"
+            else:
+                await s.delete(row)
+            await s.commit()
+        return True
+    except Exception:
+        log.exception("delete_package failed")
+        return False
+
+
+async def admin_packages() -> list[dict]:
+    """Packages created or edited in the app, to lay over the seeded list."""
+    if not enabled():
+        return []
+    try:
+        async with session() as s:
+            rows = (await s.execute(select(Package).where(Package.source.in_(("admin", "archived"))))).scalars().all()
+        return [{**{k: getattr(r, k) for k in PACKAGE_FIELDS},
+                 "itinerary": [tuple(i) for i in (r.itinerary or [])]} for r in rows]
+    except Exception:
+        log.exception("admin_packages failed")
+        return []
+
+
+async def save_image(image_id: str, content_type: str, blob: bytes) -> bool:
+    _MEM_IMAGES[image_id] = (content_type, blob)
+    if not enabled():
+        return False
+    try:
+        async with session() as s:
+            s.add(PackageImage(id=image_id, content_type=content_type, data=blob))
+            await s.commit()
+        return True
+    except Exception:
+        log.exception("save_image failed")
+        return False
+
+
+async def get_image(image_id: str) -> tuple[str, bytes] | None:
+    if image_id in _MEM_IMAGES:
+        return _MEM_IMAGES[image_id]
+    if not enabled():
+        return None
+    try:
+        async with session() as s:
+            row = await s.get(PackageImage, image_id)
+        if row:
+            _MEM_IMAGES[image_id] = (row.content_type, row.data)
+            return row.content_type, row.data
+    except Exception:
+        log.exception("get_image failed")
+    return None
 
 
 # ------------------------------------------------------ bookings/payments

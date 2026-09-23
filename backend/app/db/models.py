@@ -13,8 +13,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from geoalchemy2 import Geography
-from sqlalchemy import (Boolean, DateTime, Float, ForeignKey, Integer, String,
-                        Text, UniqueConstraint)
+from sqlalchemy import (Boolean, DateTime, Float, ForeignKey, Integer, LargeBinary,
+                        String, Text, UniqueConstraint)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -130,8 +130,33 @@ class Package(Base):
     excludes: Mapped[list] = mapped_column(JSONB, default=list)
     routes: Mapped[list] = mapped_column(JSONB, default=list)
     itinerary: Mapped[list] = mapped_column(JSONB, default=list)
+    highlight: Mapped[str] = mapped_column(String(200), default="")
+    photo_query: Mapped[str] = mapped_column(String(120), default="")
+    images: Mapped[list] = mapped_column(JSONB, default=list)
+    operator_url: Mapped[str] = mapped_column(String(500), default="")
+    whatsapp: Mapped[str] = mapped_column(String(20), default="")
+    #: "seed" rows mirror data.py; "admin" rows were added or edited in the
+    #: app and are loaded over the seeded list on startup.
+    source: Mapped[str] = mapped_column(String(16), default="seed", index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),
+                                                 default=utcnow, onupdate=utcnow)
 
     operator: Mapped[Operator] = relationship(back_populates="packages")
+
+
+class PackageImage(Base):
+    """A photo uploaded through the admin screen, served at /api/images/{id}.
+
+    Stored in the database rather than on disk because container hosts give
+    the app an ephemeral filesystem: a file written there is gone after the
+    next deploy, while the row survives.
+    """
+    __tablename__ = "package_images"
+
+    id: Mapped[str] = mapped_column(String(48), primary_key=True)
+    content_type: Mapped[str] = mapped_column(String(48))
+    data: Mapped[bytes] = mapped_column(LargeBinary)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 # ----------------------------------------------------------- accounts/push
@@ -220,6 +245,7 @@ class Booking(Base):
     total_pkr: Mapped[int] = mapped_column(Integer, default=0)
     status: Mapped[str] = mapped_column(String(24), default="pending_payment", index=True)
     condition_warnings: Mapped[list] = mapped_column(JSONB, default=list)
+    notes: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     payments: Mapped[list["Payment"]] = relationship(back_populates="booking")

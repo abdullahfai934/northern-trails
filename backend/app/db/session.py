@@ -55,12 +55,30 @@ async def session() -> AsyncIterator[AsyncSession]:
         yield s
 
 
+#: Columns added after the first release. `create_all` creates missing
+#: tables but never alters existing ones, so a database made by an earlier
+#: version gets these added in place. Each statement is idempotent.
+MIGRATIONS = [
+    "ALTER TABLE packages ADD COLUMN IF NOT EXISTS highlight VARCHAR(200) DEFAULT ''",
+    "ALTER TABLE packages ADD COLUMN IF NOT EXISTS photo_query VARCHAR(120) DEFAULT ''",
+    "ALTER TABLE packages ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb",
+    "ALTER TABLE packages ADD COLUMN IF NOT EXISTS operator_url VARCHAR(500) DEFAULT ''",
+    "ALTER TABLE packages ADD COLUMN IF NOT EXISTS whatsapp VARCHAR(20) DEFAULT ''",
+    "ALTER TABLE packages ADD COLUMN IF NOT EXISTS source VARCHAR(16) DEFAULT 'seed'",
+    "ALTER TABLE packages ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now()",
+    "CREATE INDEX IF NOT EXISTS ix_packages_source ON packages (source)",
+    "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT ''",
+]
+
+
 async def init_db() -> dict:
     """Create the PostGIS extension and every table. Safe to re-run."""
     eng = engine()
     async with eng.begin() as conn:
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
         await conn.run_sync(Base.metadata.create_all)
+        for stmt in MIGRATIONS:
+            await conn.execute(text(stmt))
     async with eng.connect() as conn:
         version = (await conn.execute(text("SELECT postgis_version()"))).scalar()
     log.info("database ready (PostGIS %s)", version)

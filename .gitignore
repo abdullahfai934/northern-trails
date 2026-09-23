@@ -32,3 +32,6 @@ backend/.venv/
 .idea/
 *.vc.db*
 
+
+# lookup caches (photos, restaurants)
+backend/.cache/

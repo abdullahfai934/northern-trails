@@ -22,6 +22,29 @@ CF="${CF:-$HOME/.local/bin/cloudflared}"
 command -v "$CF" >/dev/null 2>&1 || [ -x "$CF" ] || {
   echo "cloudflared not found at $CF"; exit 1; }
 
+# The Firebase CLI is not installed globally on every machine that runs this.
+# npx fetches it on demand and reuses the same login in ~/.config/configstore,
+# so the deploy step works either way.
+if command -v firebase >/dev/null 2>&1; then
+  FIREBASE="firebase"
+else
+  FIREBASE="npx --yes firebase-tools"
+fi
+
+# firebase-tools needs Node >= 20 and the system node here is 18, which fails
+# the deploy step after the tunnel and build have already succeeded. Prefer a
+# newer nvm-installed runtime when one is present; only the deploy needs it,
+# the Vite build is happy on 18.
+if [ "$(node -pe 'process.versions.node.split(".")[0]')" -lt 20 ] 2>/dev/null; then
+  NEWER=$(ls -1d "$HOME"/.nvm/versions/node/v2[0-9].* 2>/dev/null | sort -V | tail -1 || true)
+  if [ -n "${NEWER:-}" ]; then
+    echo "    node $(node -v) is too old for firebase-tools; using $(basename "$NEWER") to deploy"
+    export PATH="$NEWER/bin:$PATH"
+  else
+    echo "    warning: node $(node -v) is below the v20 firebase-tools needs — deploy may fail"
+  fi
+fi
+
 echo "==> 1/4  backend"
 curl -sf http://127.0.0.1:8000/api/health >/dev/null 2>&1 \
   || { ./scripts/api.sh; }
@@ -48,7 +71,7 @@ echo "==> 3/4  build SPA against it"
 ( cd frontend && VITE_API_BASE="$URL" VITE_FIREBASE_AUTH_EMULATOR_HOST= npm run build >/dev/null )
 
 echo "==> 4/4  deploy"
-firebase deploy --only hosting --project "$PROJECT" >/dev/null
+$FIREBASE deploy --only hosting --project "$PROJECT" >/dev/null
 echo
 echo "    live: $SITE"
 echo "    api : $URL/api/docs"

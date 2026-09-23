@@ -74,7 +74,7 @@ def test_booking_starts_unpaid_and_prices_per_traveller(client):
 
 def test_booking_an_unknown_package_is_a_404(client):
     assert client.post("/api/bookings", json={
-        "package_id": "pkg-does-not-exist", "traveler_name": "x"}).status_code == 404
+        "package_id": "pkg-does-not-exist", "traveler_name": "Test User"}).status_code == 404
 
 
 def test_payment_confirms_only_with_a_valid_signature(client):

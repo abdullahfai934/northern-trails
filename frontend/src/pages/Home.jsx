@@ -7,17 +7,20 @@ import {
 } from 'lucide-react'
 
 import { useData } from '../lib/store'
-import { Scene, sceneNames } from '../lib/scenes'
+import { Scene } from '../lib/scenes'
+import { getPhotos } from '../lib/photos'
 import { STATUS, relTime } from '../lib/api'
 import PackageCard from '../components/PackageCard'
+import PlacePhoto from '../components/PlacePhoto'
+import Carousel from '../components/Carousel'
 import { CountUp, Marquee, Reveal, SectionTitle, Skeleton, Stagger, StatusPill, ease, item } from '../components/ui'
 
 const SLIDES = [
-  { scene: 'hunza',   title: 'Hunza',        sub: 'Karimabad · Attabad · Passu Cones' },
-  { scene: 'k2',      title: 'Skardu',       sub: 'Baltoro · Concordia · K2 Base Camp' },
-  { scene: 'deosai',  title: 'Deosai',       sub: 'Sheosar Lake · the land of giants' },
-  { scene: 'kalash',  title: 'Chitral',      sub: 'Kalash valleys · Shandur · Garam Chashma' },
-  { scene: 'fairy',   title: 'Fairy Meadows', sub: 'Nanga Parbat · Raikot · Beyal' },
+  { scene: 'hunza',   title: 'Hunza',         query: 'Hunza Valley',               sub: 'Karimabad · Attabad · Passu Cones' },
+  { scene: 'k2',      title: 'Skardu',        query: 'Concordia K2 Karakoram',     sub: 'Baltoro · Concordia · K2 Base Camp' },
+  { scene: 'deosai',  title: 'Deosai',        query: 'Deosai plains',              sub: 'Sheosar Lake · the land of giants' },
+  { scene: 'kalash',  title: 'Chitral',       query: 'Bumburet Kalash valley',     sub: 'Kalash valleys · Shandur · Garam Chashma' },
+  { scene: 'fairy',   title: 'Fairy Meadows', query: 'Fairy Meadows',              sub: 'Nanga Parbat · Raikot · Beyal' },
 ]
 
 /* ------------------------------------------------------------------ hero */
@@ -28,34 +31,45 @@ function Hero({ alerts = [] }) {
   const fade = useTransform(scrollY, [0, 420], [1, 0])
 
   useEffect(() => {
-    const t = setInterval(() => setI((v) => (v + 1) % SLIDES.length), 5200)
+    const t = setInterval(() => setI((v) => (v + 1) % SLIDES.length), 6500)
     return () => clearInterval(t)
   }, [])
+
+  // Warm the next slide's photo so it is decoded before it fades in.
+  useEffect(() => {
+    const next = SLIDES[(i + 1) % SLIDES.length]
+    getPhotos(next.query, 1).then((items) => {
+      if (items[0]) { const img = new Image(); img.src = items[0].url }
+    })
+  }, [i])
 
   const slide = SLIDES[i]
   const urgent = alerts.find((a) => a.severity === 'high')
 
   return (
-    <section className="relative min-h-[92vh] overflow-hidden">
-      {/* sliding backdrop */}
-      <motion.div style={{ y }} className="absolute inset-0 -z-10">
+    <section className="on-photo relative -mt-16 min-h-[100svh] overflow-hidden bg-abyss pt-16">
+      {/* sliding backdrop: a real photo over its illustrated stand-in */}
+      <motion.div style={{ y }} className="absolute inset-0">
         <AnimatePresence mode="sync">
           <motion.div
             key={slide.scene}
-            initial={{ opacity: 0, scale: 1.12 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.04 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 1.6, ease }}
             className="absolute inset-0"
           >
-            <Scene name={slide.scene} className="h-full w-full" seed={i} />
+            <Scene name={slide.scene} className="absolute inset-0 h-full w-full" seed={i} />
+            <PlacePhoto query={slide.query} name={slide.title} count={1} large eager credit
+                        className="absolute inset-0 h-full w-full" imgClassName="animate-kenburns" />
           </motion.div>
         </AnimatePresence>
-        <div className="absolute inset-0 bg-gradient-to-b from-ink-950/85 via-ink-950/70 to-ink-950" />
-        <div className="absolute inset-0 bg-aurora" />
+        <div className="absolute inset-0 bg-gradient-to-b from-abyss/70 via-abyss/45 to-abyss/95" />
+        <div className="absolute inset-0 bg-gradient-to-r from-abyss/60 via-transparent to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-ink-950" />
       </motion.div>
 
-      <motion.div style={{ opacity: fade }} className="mx-auto flex min-h-[92vh] max-w-7xl flex-col justify-center px-5 py-24 sm:px-8">
+      <motion.div style={{ opacity: fade }} className="relative mx-auto flex min-h-[calc(100svh-4rem)] max-w-7xl flex-col justify-center px-5 py-24 sm:px-8">
         <motion.div initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease }}>
           <span className="chip !border-glacier-400/25 !bg-glacier-400/10 !text-glacier-200">
             <span className="relative flex h-1.5 w-1.5">
@@ -69,10 +83,10 @@ function Hero({ alerts = [] }) {
         <motion.h1
           initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.9, delay: 0.1, ease }}
-          className="mt-6 max-w-4xl text-[2.7rem] font-extrabold leading-[1.02] tracking-tight text-frost-50 sm:text-6xl lg:text-[4.6rem]"
+          className="mt-6 max-w-4xl text-[2.6rem] font-bold leading-[1.04] tracking-tight text-frost-50 drop-shadow-[0_4px_30px_rgba(0,0,0,.45)] sm:text-6xl lg:text-[4.6rem]"
         >
           Book the North with<br />
-          <span className="text-gradient">facts, not Facebook groups.</span>
+          <span className="bg-gradient-to-r from-glacier-300 via-snow to-amberz-300 bg-clip-text text-transparent">facts, not Facebook groups.</span>
         </motion.h1>
 
         <motion.p
@@ -256,16 +270,22 @@ function ConditionsStrip({ routes = [], weather = [] }) {
 /* ------------------------------------------------------------- packages */
 function Featured({ packages = [] }) {
   return (
-    <section className="mx-auto max-w-7xl px-5 py-20 sm:px-8">
-      <SectionTitle
-        eyebrow="Verified operators"
-        title="Hand-checked trips across the North."
-        sub="Every operator is matched against a tourism-department registration before a listing goes live."
-        right={<Link to="/explore" className="btn-ghost !py-2.5 !text-[13px]">See all {packages.length} trips <ArrowRight className="h-3.5 w-3.5" /></Link>}
-      />
-      <Stagger className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {packages.slice(0, 6).map((p, i) => <PackageCard key={p.id} pkg={p} index={i} />)}
-      </Stagger>
+    <section className="py-20">
+      <div className="mx-auto max-w-7xl px-5 sm:px-8">
+        <SectionTitle
+          eyebrow="Verified operators"
+          title="Hand-checked trips across the North."
+          sub="Every operator is matched against a tourism-department registration before a listing goes live. Hover to pause, swipe to browse."
+          right={<Link to="/explore" className="btn-ghost !py-2.5 !text-[13px]">See all {packages.length} trips <ArrowRight className="h-3.5 w-3.5" /></Link>}
+        />
+      </div>
+      <Reveal className="mx-auto max-w-[1600px] px-1 sm:px-4">
+        <Carousel
+          label="Featured tour packages"
+          items={packages}
+          renderItem={(p, i, copy) => <PackageCard pkg={p} index={i} standalone eager={copy === 1 && i < 3} />}
+        />
+      </Reveal>
     </section>
   )
 }
@@ -376,7 +396,6 @@ export default function Home() {
         <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-64" />)}
         </div>
-        {d.error && <p className="mt-8 text-sm text-rose-300">API unreachable: {d.error}</p>}
       </div>
     )
   }

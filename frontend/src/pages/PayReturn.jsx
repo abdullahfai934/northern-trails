@@ -101,7 +101,7 @@ export default function PayReturn() {
           )}
 
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link to="/explore" className="rounded-xl bg-glacier-400 px-5 py-2.5 text-sm font-semibold text-ink-950">
+            <Link to="/explore" className="rounded-xl bg-glacier-400 px-5 py-2.5 text-sm font-semibold text-abyss">
               Browse more tours
             </Link>
             <Link to="/conditions" className="rounded-xl border border-ink-700 px-5 py-2.5 text-sm text-frost-200">

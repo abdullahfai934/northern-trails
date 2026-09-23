@@ -32,15 +32,22 @@ export default function Explore() {
     () => [...new Set((d.packages || []).map((p) => p.pickup))].sort(), [d.packages])
 
   useEffect(() => {
+    const filters = {
+      q, destination, pickup, sort,
+      max_price: maxPrice >= 320000 ? 0 : maxPrice,
+      max_days: maxDays >= 14 ? 0 : maxDays,
+    }
     const t = setTimeout(() => {
-      api.packages({
-        q, destination, pickup, sort,
-        max_price: maxPrice >= 320000 ? 0 : maxPrice,
-        max_days: maxDays >= 14 ? 0 : maxDays,
-      }).then((r) => setItems(r.items)).catch(() => setItems([]))
+      api.packages(filters)
+        .then((r) => setItems(r.items))
+        // The API is unreachable — most often because the SPA is hosted
+        // statically with no backend. Filtering the snapshot the store
+        // already loaded keeps this page browsable; reporting zero results
+        // made every package look like it had stopped existing.
+        .catch(() => setItems(filterLocally(d.packages || [], filters)))
     }, 220)
     return () => clearTimeout(t)
-  }, [q, destination, pickup, maxPrice, maxDays, sort])
+  }, [q, destination, pickup, maxPrice, maxDays, sort, d.packages])
 
   const activeCount = [destination, pickup].filter(Boolean).length
     + (maxPrice < 320000 ? 1 : 0) + (maxDays < 14 ? 1 : 0)
@@ -128,7 +135,7 @@ export default function Explore() {
         )}
       </AnimatePresence>
 
-      <div className="grid gap-6 lg:grid-cols-[250px_1fr]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[250px_minmax(0,1fr)]">
         <aside className="hidden lg:block">
           <div className="glass sticky top-[9.5rem] rounded-2xl p-5">{Filters}</div>
         </aside>
@@ -140,7 +147,7 @@ export default function Explore() {
 
           {items === null ? (
             <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-              {[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-72" />)}
+              {[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-[440px] rounded-2xl" />)}
             </div>
           ) : items.length === 0 ? (
             <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
@@ -160,6 +167,40 @@ export default function Explore() {
       </div>
     </div>
   )
+}
+
+/**
+ * The same filter and sort the API applies, run in the browser.
+ *
+ * Kept deliberately in step with `list_packages` in backend/app/main.py so an
+ * offline result set is the one the server would have returned.
+ */
+function filterLocally(packages, { q, destination, pickup, sort, max_price, max_days }) {
+  let items = [...packages]
+  if (q) {
+    const ql = q.toLowerCase()
+    items = items.filter((p) =>
+      p.title.toLowerCase().includes(ql) ||
+      p.destination.toLowerCase().includes(ql) ||
+      (p.tags || []).some((t) => t.toLowerCase().includes(ql)) ||
+      (p.operator?.name || '').toLowerCase().includes(ql))
+  }
+  if (destination) items = items.filter((p) => p.destination.toLowerCase() === destination.toLowerCase())
+  if (pickup) items = items.filter((p) => p.pickup.toLowerCase() === pickup.toLowerCase())
+  if (max_price) items = items.filter((p) => p.price_pkr <= max_price)
+  if (max_days) items = items.filter((p) => p.days <= max_days)
+
+  const keys = {
+    price_asc: (p) => p.price_pkr,
+    price_desc: (p) => -p.price_pkr,
+    duration: (p) => p.days,
+    rating: (p) => -p.rating,
+  }
+  const key = keys[sort]
+  items.sort(key
+    ? (a, b) => key(a) - key(b)
+    : (a, b) => (b.rating - a.rating) || (a.price_pkr - b.price_pkr))
+  return items
 }
 
 function Chip({ active, children, ...rest }) {

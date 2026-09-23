@@ -3,26 +3,26 @@ import { Link, useParams } from 'react-router-dom'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import {
   ArrowLeft, BadgeCheck, CalendarDays, Check, Users, X as XIcon,
-  ShieldCheck, FileCheck2, AlertTriangle, Languages, Car,
+  ShieldCheck, FileCheck2, AlertTriangle, Languages, Car, Heart, Share2,
+  MessageCircle, ExternalLink,
 } from 'lucide-react'
 
-import { api, pkr, relTime, postToGateway } from '../lib/api'
+import { api, pkr, relTime, whatsappUrl } from '../lib/api'
 import { useData } from '../lib/store'
+import { useWishlist } from '../lib/wishlist'
 import { Scene, sceneFor } from '../lib/scenes'
-import { Reveal, Sheet, Skeleton, StatusPill, Stars, ease, useToast } from '../components/ui'
+import PlacePhoto from '../components/PlacePhoto'
+import Restaurants from '../components/Restaurants'
+import { Gallery, sharePackage, usePackageActions } from '../components/PackageActions'
+import { Reveal, Skeleton, StatusPill, Stars, ease, useToast } from '../components/ui'
 
 export default function PackageDetail() {
   const { id } = useParams()
   const d = useData() || {}
   const [pkg, setPkg] = useState(null)
-  const [booking, setBooking] = useState(false)
-  const [paying, setPaying] = useState(false)
-  const [confirmed, setConfirmed] = useState(null)
-  const [travelers, setTravelers] = useState(2)
-  const [name, setName] = useState('')
-  const [phone, setPhone] = useState('')
-  const [date, setDate] = useState('')
   const toast = useToast()
+  const actions = usePackageActions()
+  const wish = useWishlist()
 
   const { scrollY } = useScroll()
   const heroY = useTransform(scrollY, [0, 500], [0, 120])
@@ -40,18 +40,22 @@ export default function PackageDetail() {
       .catch(() => {
         if (!alive) return
         const local = (d.packages || []).find((p) => p.id === id)
-        if (!local) { setPkg(false); return }
+        // Still loading shared data: keep the skeleton rather than
+        // declaring a package missing that simply has not arrived yet.
+        if (!local) { if (d.ready) setPkg(false); return }
         const routes = local.routes || []
+        const dest = (d.destinations || []).find((x) => x.name === local.destination)
         setPkg({
           ...local,
           route_conditions: (d.routes || []).filter((r) => routes.includes(r.id)),
           active_alerts: (d.alerts || []).filter(
             (a) => (a.routes || []).some((r) => routes.includes(r))),
-          offline: true,
+          destination_info: dest ? { id: dest.id, name: dest.name, lat: dest.lat, lon: dest.lon,
+                                     elevation_m: dest.elevation_m, attractions: dest.attractions, blurb: dest.blurb } : null,
         })
       })
     return () => { alive = false }
-  }, [id, d.packages, d.routes, d.alerts])
+  }, [id, d.ready, d.packages, d.routes, d.alerts, d.destinations])
 
   if (pkg === false) return (
     <div className="mx-auto max-w-3xl px-5 py-32 text-center">
@@ -72,42 +76,21 @@ export default function PackageDetail() {
     </div>
   )
 
-  const stale = pkg.offline === true
-
-  const submit = async () => {
-    try {
-      const res = await api.book({
-        package_id: pkg.id, traveler_name: name || 'Traveler', phone,
-        start_date: date, travelers,
-      })
-      setConfirmed(res)
-      toast('Booking held — ' + res.booking_id)
-    } catch (e) { toast('Booking failed: ' + e.message, 'bad') }
-  }
-
-  /** Hand the browser to the gateway; it returns to /pay/return. */
-  const pay = async (provider) => {
-    if (!confirmed) return
-    setPaying(true)
-    try {
-      const checkout = await api.startPayment({
-        booking_id: confirmed.booking_id, provider, phone,
-      })
-      postToGateway(checkout)
-    } catch (e) {
-      setPaying(false)
-      toast('Could not start payment: ' + e.message, 'bad')
-    }
-  }
+  const saved = wish.has(pkg.id)
+  const wa = whatsappUrl(pkg)
+  const dest = pkg.destination_info
 
   return (
     <div className="pb-20">
       {/* hero */}
-      <div className="relative h-[46vh] min-h-[320px] overflow-hidden">
-        <motion.div style={{ y: heroY }} className="absolute inset-0">
-          <Scene name={sceneFor(pkg)} className="h-full w-full scale-110" />
+      <div className="on-photo relative h-[56vh] min-h-[360px] overflow-hidden bg-abyss">
+        <motion.div style={{ y: heroY }} className="absolute inset-0 scale-110">
+          <Scene name={sceneFor(pkg)} className="absolute inset-0 h-full w-full" />
+          <PlacePhoto query={pkg.photo_query || pkg.destination} name={pkg.destination} images={pkg.images}
+                      large eager className="absolute inset-0 h-full w-full" imgClassName="animate-kenburns" />
         </motion.div>
-        <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/50 to-ink-950/30" />
+        <div className="absolute inset-0 bg-gradient-to-t from-abyss via-abyss/45 to-abyss/30" />
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-ink-950" />
         <div className="absolute inset-x-0 bottom-0">
           <div className="mx-auto max-w-5xl px-5 pb-8 sm:px-8">
             <Link to="/explore" className="mb-5 inline-flex items-center gap-2 text-[12px] font-semibold text-frost-300 transition hover:text-frost-50">
@@ -117,9 +100,10 @@ export default function PackageDetail() {
               <div className="mb-3 flex flex-wrap gap-1.5">
                 {pkg.tags.map((t) => <span key={t} className="chip !text-[10px]">{t}</span>)}
               </div>
-              <h1 className="max-w-3xl text-3xl font-extrabold leading-[1.08] tracking-tight text-frost-50 sm:text-5xl">
+              <h1 className="max-w-3xl text-3xl font-bold leading-[1.08] tracking-tight text-frost-50 sm:text-5xl">
                 {pkg.title}
               </h1>
+              {pkg.highlight && <p className="mt-3 max-w-2xl text-[15px] text-frost-200">{pkg.highlight}</p>}
               <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] text-frost-300">
                 <span className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 text-glacier-300" /> {pkg.days} days</span>
                 <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-glacier-300" /> {pkg.group_size} travelers</span>
@@ -131,15 +115,15 @@ export default function PackageDetail() {
         </div>
       </div>
 
-      <div className="mx-auto grid max-w-5xl gap-8 px-5 pt-10 sm:px-8 lg:grid-cols-[1fr_320px]">
-        <div className="space-y-10">
+      <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 px-5 pt-10 sm:px-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0 space-y-10">
+          {/* photos */}
+          <Reveal>
+            <h2 className="mb-4 text-[11px] font-bold uppercase tracking-[.18em] text-frost-400">Photos</h2>
+            <div className="glass overflow-hidden rounded-2xl"><Gallery pkg={pkg} /></div>
+          </Reveal>
+
           {/* live conditions on this route */}
-          {stale && (
-            <div className="mb-3 rounded-xl border border-amberz-400/25 bg-amberz-400/10 px-3 py-2 text-[11px] leading-snug text-amberz-200">
-              Showing saved details — the live API is unreachable, so the route
-              conditions below may not be current.
-            </div>
-          )}
           {pkg.route_conditions?.length > 0 && (
             <Reveal>
               <h2 className="mb-4 text-[11px] font-bold uppercase tracking-[.18em] text-frost-400">Conditions on this route right now</h2>
@@ -218,11 +202,18 @@ export default function PackageDetail() {
             </div>
           </Reveal>
 
+          {/* where to eat */}
+          {dest?.lat != null && (
+            <Reveal>
+              <Restaurants destination={dest.name} center={{ lat: dest.lat, lon: dest.lon }} />
+            </Reveal>
+          )}
+
           {/* operator verification */}
           <Reveal>
             <div className="glass rounded-2xl p-6">
               <div className="flex items-center gap-3">
-                <span className="grid h-11 w-11 place-items-center rounded-xl text-sm font-black text-ink-950"
+                <span className="grid h-11 w-11 place-items-center rounded-xl text-sm font-black text-abyss"
                       style={{ background: `hsl(${pkg.operator.avatar_hue} 70% 62%)` }}>
                   {pkg.operator.name[0]}
                 </span>
@@ -274,8 +265,28 @@ export default function PackageDetail() {
                 <Row k="Operator" v={pkg.operator.name} />
               </div>
 
-              <button onClick={() => setBooking(true)} className="btn-primary mt-6 w-full">Reserve this trip</button>
-              <Link to="/assistant" className="btn-ghost mt-2 w-full !py-2.5 !text-[13px]">Ask about conditions</Link>
+              <button onClick={() => actions.openBooking(pkg)} className="btn-primary mt-6 w-full">Book now</button>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button onClick={() => toast(wish.toggle(pkg.id) ? 'Saved to your wishlist' : 'Removed from your wishlist')}
+                  aria-pressed={saved}
+                  className={`btn-ghost !px-3 !py-2.5 !text-[12.5px] ${saved ? '!border-rose-400/40 !text-rose-300' : ''}`}>
+                  <Heart className={`h-3.5 w-3.5 ${saved ? 'fill-current' : ''}`} /> {saved ? 'Saved' : 'Wishlist'}
+                </button>
+                <button onClick={() => sharePackage(pkg, toast)} className="btn-ghost !px-3 !py-2.5 !text-[12.5px]">
+                  <Share2 className="h-3.5 w-3.5" /> Share
+                </button>
+              </div>
+              {wa && (
+                <a href={wa} target="_blank" rel="noreferrer noopener" className="btn-ghost mt-2 w-full !py-2.5 !text-[12.5px]">
+                  <MessageCircle className="h-3.5 w-3.5 text-emerald-300" /> Contact on WhatsApp
+                </a>
+              )}
+              {pkg.operator_url && (
+                <a href={pkg.operator_url} target="_blank" rel="noreferrer noopener" className="btn-ghost mt-2 w-full !py-2.5 !text-[12.5px]">
+                  <ExternalLink className="h-3.5 w-3.5" /> Visit operator website
+                </a>
+              )}
+              <Link to="/assistant" className="btn-ghost mt-2 w-full !py-2.5 !text-[12.5px]">Ask about conditions</Link>
               <p className="mt-3 text-center text-[11px] leading-relaxed text-frost-400">
                 No charge now. The operator confirms availability within {pkg.operator.response_min * 30} minutes.
               </p>
@@ -284,96 +295,6 @@ export default function PackageDetail() {
         </aside>
       </div>
 
-      {/* booking sheet */}
-      <Sheet open={booking} onClose={() => { setBooking(false); setConfirmed(null) }} title={confirmed ? 'Booking confirmed' : 'Reserve your trip'}>
-        {confirmed ? (
-          <div className="space-y-5">
-            <motion.div initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                        transition={{ type: 'spring', stiffness: 260, damping: 18 }}
-                        className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-emerald-400/15 text-emerald-300">
-              <Check className="h-8 w-8" strokeWidth={3} />
-            </motion.div>
-            <div className="text-center">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-amberz-300">
-                Held — payment required
-              </div>
-              <div className="mt-1 font-mono text-lg font-bold text-frost-50">{confirmed.booking_id}</div>
-              <div className="mt-1 text-[13px] text-frost-300">{confirmed.package}</div>
-              <div className="mt-0.5 text-[12px] text-frost-400">with {confirmed.operator}</div>
-            </div>
-            <div className="glass rounded-xl p-4 text-[13px]">
-              <Row k="Travelers" v={confirmed.travelers} />
-              <Row k="Total" v={pkr(confirmed.total_pkr)} />
-            </div>
-            {confirmed.condition_warnings?.length > 0 && (
-              <div className="glass rounded-xl border-amberz-400/20 bg-amberz-400/[.06] p-4">
-                <div className="mb-2 flex items-center gap-2 text-[12px] font-bold text-amberz-300">
-                  <AlertTriangle className="h-3.5 w-3.5" /> Condition alerts on your route
-                </div>
-                <ul className="space-y-1.5 text-[12px] leading-relaxed text-frost-300">
-                  {confirmed.condition_warnings.map((w, i) => <li key={i}>• {w}</li>)}
-                </ul>
-                <p className="mt-2.5 text-[11px] text-frost-400">
-                  Sign in with your phone to get a push notification if this changes before
-                  departure, with a reroute suggestion.
-                </p>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <div className="text-[12px] font-semibold text-frost-200">Pay to confirm</div>
-              {(confirmed.payment?.providers || []).map((prov) => (
-                <button
-                  key={prov.id}
-                  disabled={paying}
-                  onClick={() => pay(prov.id)}
-                  className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-[13px] transition disabled:opacity-50
-                    ${prov.configured
-                      ? 'border-glacier-500/40 bg-glacier-500/10 text-frost-50 hover:border-glacier-400'
-                      : 'border-ink-700 bg-ink-850 text-frost-400'}`}
-                >
-                  <span className="font-semibold">
-                    {prov.id === 'mock' ? 'Sandbox gateway' : prov.name}
-                  </span>
-                  <span className="text-[11px]">
-                    {prov.configured ? pkr(confirmed.total_pkr) : 'credentials needed'}
-                  </span>
-                </button>
-              ))}
-              <p className="text-[11px] text-frost-400">
-                JazzCash and Easypaisa activate once merchant credentials are set. The
-                sandbox gateway runs the same signed callback flow.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div>
-              <label className="label">Full name</label>
-              <input value={name} onChange={(e) => setName(e.target.value)} className="field" placeholder="As on your CNIC / passport" />
-            </div>
-            <div>
-              <label className="label">Phone</label>
-              <input value={phone} onChange={(e) => setPhone(e.target.value)} className="field" placeholder="+92 3xx xxxxxxx" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="label">Start date</label>
-                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="field" />
-              </div>
-              <div>
-                <label className="label">Travelers</label>
-                <input type="number" min="1" max="14" value={travelers}
-                       onChange={(e) => setTravelers(+e.target.value)} className="field" />
-              </div>
-            </div>
-            <div className="glass rounded-xl p-4">
-              <Row k={`${pkr(pkg.price_pkr)} × ${travelers}`} v={pkr(pkg.price_pkr * travelers)} />
-            </div>
-            <button onClick={submit} className="btn-primary w-full">Confirm reservation</button>
-          </div>
-        )}
-      </Sheet>
     </div>
   )
 }

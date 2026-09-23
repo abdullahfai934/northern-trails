@@ -7,8 +7,8 @@ import {
 
 import { useData } from '../lib/store'
 import { api, pkr, wsUrl } from '../lib/api'
+import { closeSocket } from '../lib/socket'
 import { Reveal, SectionTitle, ease, useToast } from '../components/ui'
-import NeedsBackend from '../components/NeedsBackend'
 
 const WINDOW = 45
 
@@ -25,9 +25,9 @@ export default function Operator() {
 
   /* ------------------------------------------------- operator socket */
   useEffect(() => {
-    // No backend means no socket to open; skip it rather than retrying
-    // against an origin that only serves static files.
-    if (d?.offline) return undefined
+    // Wait until the API has answered: until then there is no dispatcher
+    // to open a socket to, and the store keeps retrying in the background.
+    if (d?.offline || !d?.ready) return undefined
     const ws = new WebSocket(wsUrl(`/ws/operator/${opId}`))
     wsRef.current = ws
     ws.onmessage = (ev) => {
@@ -44,8 +44,8 @@ export default function Operator() {
       }
       if (m.type === 'job.taken') setJobs((j) => j.filter((x) => x.id !== m.request_id))
     }
-    return () => ws.close()
-  }, [opId, toast, d?.offline])
+    return () => closeSocket(ws)
+  }, [opId, toast, d?.offline, d?.ready])
 
   /* countdown tick */
   const [, force] = useState(0)
@@ -56,14 +56,21 @@ export default function Operator() {
 
   useEffect(() => {
     setJobs([]); setConfirmed([])
-    api.jobs(opId).then((r) => setJobs((r.open || []).map(withDeadline))).catch(() => {})
-  }, [opId])
+    if (d?.offline || !d?.ready) return
+    api.jobs(opId).then((r) => setJobs((r.open || []).map(withDeadline)))
+      .catch((e) => toast('Could not load your jobs: ' + e.message, 'bad'))
+  }, [opId, d?.offline, d?.ready, toast])
 
   const toggle = async () => {
     const next = !online
     setOnline(next)
-    await api.availability(opId, next).catch(() => {})
-    toast(next ? 'You are online — jobs will be dispatched to you.' : 'You are offline.', next ? 'ok' : 'warn')
+    try {
+      await api.availability(opId, next)
+      toast(next ? 'You are online — jobs will be dispatched to you.' : 'You are offline.', next ? 'ok' : 'warn')
+    } catch (e) {
+      setOnline(!next)
+      toast('Could not change availability: ' + e.message, 'bad')
+    }
   }
 
   const bid = async (job, delta = 0) => {
@@ -80,8 +87,12 @@ export default function Operator() {
   }
 
   const decline = async (job) => {
-    await api.reject(job.id, { operator_id: opId, reason: 'Vehicle already booked' }).catch(() => {})
-    setJobs((j) => j.filter((x) => x.id !== job.id))
+    try {
+      await api.reject(job.id, { operator_id: opId, reason: 'Vehicle already booked' })
+      setJobs((j) => j.filter((x) => x.id !== job.id))
+    } catch (e) {
+      toast('Could not decline: ' + e.message, 'bad')
+    }
   }
 
   if (!d.ready) return <div className="px-5 py-32 text-center text-frost-400">Loading console…</div>
@@ -91,18 +102,10 @@ export default function Operator() {
   return (
     <div className="mx-auto max-w-6xl px-5 pb-16 pt-14 sm:px-8">
       {d?.offline && (
-        <Reveal>
-          <div className="mb-6">
-            <NeedsBackend feature="The operator console">
-              <p className="mt-3 text-[12px] leading-relaxed text-frost-400">
-                Jobs arrive over a WebSocket from the dispatcher, so there is nothing to
-                receive until the API is running. Locally, open this beside
-                <span className="font-mono text-frost-300"> /instant </span>
-                in two tabs and you can watch a real match: request, bid, accept, track.
-              </p>
-            </NeedsBackend>
-          </div>
-        </Reveal>
+        <div className="mb-6 flex items-center gap-2 text-[12px] text-frost-400" role="status">
+          <span className="h-3 w-3 animate-spin rounded-full border-2 border-glacier-300 border-t-transparent" />
+          Connecting to the dispatcher…
+        </div>
       )}
 
       <Reveal>
@@ -128,7 +131,7 @@ export default function Operator() {
             <button key={o.id} onClick={() => setOpId(o.id)}
               className={`flex shrink-0 items-center gap-2.5 rounded-xl border px-3.5 py-2.5 transition-all duration-300
                 ${opId === o.id ? 'border-glacier-400/50 bg-glacier-400/10' : 'border-white/10 bg-white/[.03] hover:bg-white/[.06]'}`}>
-              <span className="grid h-7 w-7 place-items-center rounded-lg text-[11px] font-black text-ink-950"
+              <span className="grid h-7 w-7 place-items-center rounded-lg text-[11px] font-black text-abyss"
                     style={{ background: `hsl(${o.avatar_hue} 70% 62%)` }}>{o.name[0]}</span>
               <span className="text-left">
                 <span className={`block text-[12.5px] font-bold ${opId === o.id ? 'text-glacier-200' : 'text-frost-100'}`}>{o.name}</span>
@@ -149,7 +152,7 @@ export default function Operator() {
         </div>
       </Reveal>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
         {/* job queue */}
         <div>
           <div className="mb-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.18em] text-frost-400">
@@ -253,7 +256,7 @@ export default function Operator() {
           {op && (
             <div className="glass rounded-2xl p-5">
               <div className="flex items-center gap-3">
-                <span className="grid h-10 w-10 place-items-center rounded-xl text-sm font-black text-ink-950"
+                <span className="grid h-10 w-10 place-items-center rounded-xl text-sm font-black text-abyss"
                       style={{ background: `hsl(${op.avatar_hue} 70% 62%)` }}>{op.name[0]}</span>
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5 text-[13px] font-bold text-frost-50">

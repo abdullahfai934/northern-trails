@@ -4,17 +4,19 @@ from __future__ import annotations
 import logging
 import os
 import pathlib
+import re
 import uuid
+from datetime import date, timedelta
 from typing import List, Optional
 
 from fastapi import (Depends, FastAPI, HTTPException, Query, Request,
                      WebSocket, WebSocketDisconnect)
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
-from . import assistant, auth, data, push
+from . import admin, assistant, auth, data, photos, places, planner, push
 from . import payments as pay
 from .config import PAYMENTS_RETURN_URL, feature_report
 from .db import repo
@@ -26,6 +28,8 @@ log = logging.getLogger("northern_trails")
 
 app = FastAPI(title="Northern Trails API", version="1.0.0",
               description="AI-powered tour marketplace & live conditions assistant for Northern Pakistan")
+
+app.include_router(admin.router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -87,16 +91,71 @@ class PaymentStartIn(BaseModel):
     phone: str = ""
 
 
+PHONE_RE = re.compile(r"^\+?[0-9][0-9\s-]{8,17}$")
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[a-z]{2,}$", re.I)
+
+
 class BookingIn(BaseModel):
     package_id: str
-    traveler_name: str
-    email: str = ""
-    phone: str = ""
+    traveler_name: str = Field(..., min_length=2, max_length=120)
+    email: str = Field("", max_length=160)
+    phone: str = Field("", max_length=24)
     start_date: str = ""
-    travelers: int = 2
+    travelers: int = Field(2, ge=1, le=20)
+    notes: str = Field("", max_length=500)
+
+    @field_validator("traveler_name")
+    @classmethod
+    def _name(cls, v: str) -> str:
+        v = " ".join(v.split())
+        if len(v) < 2:
+            raise ValueError("Enter the lead traveler's full name")
+        return v
+
+    @field_validator("email")
+    @classmethod
+    def _email(cls, v: str) -> str:
+        v = v.strip()
+        if v and not EMAIL_RE.match(v):
+            raise ValueError("Enter a valid email address")
+        return v
+
+    @field_validator("phone")
+    @classmethod
+    def _phone(cls, v: str) -> str:
+        v = v.strip()
+        if v and not PHONE_RE.match(v):
+            raise ValueError("Enter a phone number like +92 300 1234567")
+        return v
+
+    @field_validator("start_date")
+    @classmethod
+    def _start(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            return v
+        try:
+            d = date.fromisoformat(v)
+        except ValueError:
+            raise ValueError("Start date must be YYYY-MM-DD")
+        if d < date.today():
+            raise ValueError("Start date is in the past")
+        if d > date.today() + timedelta(days=730):
+            raise ValueError("Start date is more than two years away")
+        return v
 
 
 # ------------------------------------------------------------- marketplace
+class PlanIn(BaseModel):
+    destination: str = ""
+    start_city: str = ""
+    budget_pkr: int = Field(0, ge=0)
+    days: int = Field(0, ge=0, le=60)
+    people: int = Field(1, ge=1, le=40)
+    interests: List[str] = Field(default_factory=list)
+    travel_date: str = ""
+
+
 @app.get("/api/health")
 def health():
     return {
@@ -117,6 +176,7 @@ def bootstrap():
         "weather": data.WEATHER,
         "services": data.SERVICE_TYPES,
         "cities": data.CITIES,
+        "destinations": data.DESTINATIONS,
         "suggestions": assistant.SUGGESTIONS,
     }
 
@@ -167,7 +227,82 @@ def get_package(package_id: str):
     ridx = data.route_index()
     full["route_conditions"] = [ridx[r] for r in pkg["routes"] if r in ridx]
     full["active_alerts"] = [a for a in data.ALERTS if set(a["routes"]) & set(pkg["routes"])]
+    dest = data.destination_by_name(pkg["destination"])
+    if dest:
+        full["destination_info"] = {k: dest[k] for k in ("id", "name", "lat", "lon", "elevation_m",
+                                                         "attractions", "blurb")}
     return full
+
+
+@app.get("/api/photos")
+async def place_photos(q: str = Query(..., min_length=2, max_length=80),
+                       count: int = Query(6, ge=1, le=12)):
+    """Landscape photos of a place, with author and licence for each."""
+    return await photos.search(q, count)
+
+
+@app.get("/api/places/restaurants")
+async def nearby_restaurants(destination: str = "", lat: Optional[float] = None,
+                             lon: Optional[float] = None):
+    """Named places to eat near a destination (or a lat/lon), nearest first."""
+    if lat is not None and not (-90 <= lat <= 90) or lon is not None and not (-180 <= lon <= 180):
+        raise HTTPException(400, "lat/lon out of range")
+    result = await places.nearby(destination, lat, lon)
+    if not result["ok"] and "Unknown destination" in result.get("error", ""):
+        raise HTTPException(404, result["error"])
+    return result
+
+
+@app.get("/api/images/{image_id}")
+async def uploaded_image(image_id: str):
+    if not re.fullmatch(r"[0-9a-f]{32}", image_id):
+        raise HTTPException(404, "Image not found")
+    hit = await repo.get_image(image_id)
+    if not hit:
+        raise HTTPException(404, "Image not found")
+    content_type, blob = hit
+    return Response(blob, media_type=content_type,
+                    headers={"Cache-Control": "public, max-age=31536000, immutable"})
+
+
+@app.get("/api/destinations")
+def list_destinations():
+    """Destination catalogue, each with its current Travel Condition Score."""
+    return {"items": [
+        {**d, "travel_condition": planner.travel_condition(d)}
+        for d in data.DESTINATIONS
+    ]}
+
+
+@app.get("/api/destinations/{destination_id}")
+def get_destination(destination_id: str):
+    dest = data.destination_index().get(destination_id)
+    if not dest:
+        raise HTTPException(404, "Destination not found")
+    ridx = data.route_index()
+    return {
+        **dest,
+        "travel_condition": planner.travel_condition(dest),
+        "routes": [ridx[r] for r in dest["routes"] if r in ridx],
+        "packages": [data.package_with_operator(p) for p in data.PACKAGES
+                     if p["destination"] == dest["name"]],
+    }
+
+
+@app.post("/api/plan")
+def plan_trip(body: PlanIn):
+    """Compare every destination against one traveler's stated requirements."""
+    return planner.plan(
+        destination=body.destination, start_city=body.start_city,
+        budget_pkr=body.budget_pkr, days=body.days, people=body.people,
+        interests=body.interests, travel_date=body.travel_date,
+    )
+
+
+@app.get("/api/plan/methodology")
+def plan_methodology():
+    """How the Travel Condition Score is calculated, weights included."""
+    return planner.methodology()
 
 
 @app.post("/api/bookings")
@@ -192,6 +327,7 @@ async def create_booking(body: BookingIn, user: auth.Identity = Depends(auth.cur
         "phone": body.phone or user.phone, "start_date": body.start_date,
         "travelers": travelers, "total_pkr": total,
         "status": "pending_payment", "condition_warnings": warnings,
+        "notes": body.notes.strip(),
     })
 
     return {
@@ -572,6 +708,9 @@ async def on_startup():
             await dbsession.init_db()
             from .db.seed import seed_all
             await seed_all()
+            loaded = await admin.load_saved_packages()
+            if loaded:
+                log.info("loaded %d packages saved from the admin screen", loaded)
         except Exception:
             # A database problem must not stop the app booting: it falls
             # back to the in-memory layer, which is fully functional.

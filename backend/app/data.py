@@ -287,6 +287,8 @@ PACKAGES = [
         "difficulty": "Easy",
         "tags": ["Culture", "Photography", "Road trip"],
         "hero": "hunza",
+        "highlight": "Khunjerab Pass at 4,693 m and Shangrila in one loop",
+        "photo_query": "Hunza Valley",
         "includes": ["4x4 transport", "3★ hotels", "Breakfast + dinner", "Licensed guide", "Khunjerab permit"],
         "excludes": ["Airfare", "Lunches", "Personal expenses"],
         "routes": ["kkh-gilgit-hunza", "kkh-hunza-khunjerab", "skardu-road"],
@@ -312,6 +314,8 @@ PACKAGES = [
         "difficulty": "Moderate",
         "tags": ["Wildlife", "Camping", "Lakes"],
         "hero": "deosai",
+        "highlight": "Camp beside Sheosar Lake on the second-highest plateau on earth",
+        "photo_query": "Deosai plains",
         "includes": ["High-clearance 4x4", "Camping gear", "All meals", "Deosai permit", "Park ranger escort"],
         "excludes": ["Sleeping bag hire", "Tips"],
         "routes": ["skardu-road", "deosai-plains"],
@@ -336,6 +340,8 @@ PACKAGES = [
         "difficulty": "Challenging",
         "tags": ["Trekking", "Mountains"],
         "hero": "fairy",
+        "highlight": "Wake up facing the north face of Nanga Parbat",
+        "photo_query": "Fairy Meadows",
         "includes": ["Raikot jeep", "Wooden hut stay", "All meals", "Trek guide", "Community fee"],
         "excludes": ["Porter", "Trekking poles"],
         "routes": ["fairy-meadows"],
@@ -359,6 +365,8 @@ PACKAGES = [
         "difficulty": "Easy",
         "tags": ["Culture", "Festival", "Heritage"],
         "hero": "kalash",
+        "highlight": "Kalash festivals, Chitral Fort and the Shandur crossing",
+        "photo_query": "Bumburet Kalash valley",
         "includes": ["Transport via Lowari Tunnel", "Guest houses", "Breakfast + dinner", "Kalash cultural guide"],
         "excludes": ["Airfare", "Camera fees at festivals"],
         "routes": ["shandur-chitral"],
@@ -385,6 +393,8 @@ PACKAGES = [
         "difficulty": "Easy",
         "tags": ["Short break", "Lakes", "Photography"],
         "hero": "attabad",
+        "highlight": "Attabad's turquoise water and the Passu Cones in three days",
+        "photo_query": "Attabad Lake",
         "includes": ["Prado transport", "Boutique hotel", "Breakfast", "Local guide"],
         "excludes": ["Boat ride at Attabad", "Meals other than breakfast"],
         "routes": ["kkh-gilgit-hunza"],
@@ -408,6 +418,8 @@ PACKAGES = [
         "difficulty": "Expedition",
         "tags": ["Trekking", "Expedition", "Glacier"],
         "hero": "k2",
+        "highlight": "Walk the Baltoro to Concordia beneath four 8,000 m peaks",
+        "photo_query": "Concordia K2 Karakoram",
         "includes": ["Porters", "Expedition cook", "Tents + mess", "All permits", "Satellite phone", "Evacuation insurance"],
         "excludes": ["Personal climbing gear", "International flights"],
         "routes": ["skardu-road"],
@@ -439,6 +451,123 @@ CITIES = ["Gilgit", "Karimabad (Hunza)", "Passu", "Skardu", "Khaplu", "Chilas",
           "Raikot Bridge", "Astore", "Chitral", "Naltar", "Attabad Lake", "Deosai"]
 
 
+# --------------------------------------------------------------------------
+# Destinations
+#
+# The planner compares these against what a traveler asked for. Every field
+# is either a published figure or a property of the terrain, so a comparison
+# built from them can be explained rather than asserted:
+#
+#   weather_city  the station whose live reading represents the destination
+#   routes        the tracked road segments you must clear to get there;
+#                 a destination is only as reachable as its worst segment
+#   interests     what the place is actually good for, matched against the
+#                 traveler's stated interests
+#   best_months   1-12, the months the destination is normally in season
+#   daily_cost_pkr  typical per-person, per-day ground cost, used to estimate
+#                 a trip before any operator package is involved
+# --------------------------------------------------------------------------
+DESTINATIONS = [
+    {
+        "id": "dest-hunza",
+        "photo_query": "Hunza Valley",
+        "lat": 36.3167, "lon": 74.6589,
+        "name": "Hunza",
+        "valley": "Hunza",
+        "weather_city": "Karimabad (Hunza)",
+        "routes": ["kkh-gilgit-hunza", "kkh-hunza-khunjerab"],
+        "elevation_m": 2438,
+        "interests": ["Culture", "Photography", "Lakes", "Mountains", "Short break", "Road trip"],
+        "best_months": [4, 5, 6, 7, 8, 9, 10, 11],
+        "daily_cost_pkr": 12000,
+        "drive_hours_from": {"Islamabad": 16.0, "Gilgit": 2.5, "Chilas": 6.0, "Skardu": 7.5},
+        "attractions": ["Baltit Fort", "Altit Fort", "Attabad Lake", "Passu Cones",
+                        "Khunjerab Pass", "Rakaposhi View Point"],
+        "blurb": "Fortified valley towns, apricot terraces and the easiest high-altitude "
+                 "scenery in the north to reach on sealed road.",
+    },
+    {
+        "id": "dest-skardu",
+        "photo_query": "Skardu",
+        "lat": 35.2971, "lon": 75.6333,
+        "name": "Skardu",
+        "valley": "Skardu",
+        "weather_city": "Skardu",
+        "routes": ["skardu-road"],
+        "elevation_m": 2228,
+        "interests": ["Mountains", "Trekking", "Lakes", "Expedition", "Glacier", "Photography"],
+        "best_months": [4, 5, 6, 7, 8, 9, 10],
+        "daily_cost_pkr": 13500,
+        "drive_hours_from": {"Islamabad": 20.0, "Gilgit": 6.0, "Chilas": 10.0, "Skardu": 0.0},
+        "attractions": ["Shangrila / Lower Kachura", "Upper Kachura Lake", "Shigar Fort",
+                        "Khaplu Palace", "Cold Desert Sarfaranga", "K2 base-camp trailhead"],
+        "blurb": "The staging town for Baltistan and the Karakoram giants — lakes and "
+                 "cold desert at the valley floor, 8000ers up the side valleys.",
+    },
+    {
+        "id": "dest-deosai",
+        "photo_query": "Deosai plains",
+        "lat": 35.02, "lon": 75.43,
+        "name": "Deosai",
+        "valley": "Deosai",
+        "weather_city": "Deosai Plains",
+        "routes": ["skardu-road", "deosai-plains"],
+        "elevation_m": 4114,
+        "interests": ["Wildlife", "Camping", "Lakes", "Photography", "Mountains"],
+        "best_months": [6, 7, 8, 9],
+        "daily_cost_pkr": 15500,
+        "drive_hours_from": {"Islamabad": 23.0, "Gilgit": 9.0, "Chilas": 13.0, "Skardu": 3.0},
+        "attractions": ["Sheosar Lake", "Bara Pani", "Kala Pani", "Himalayan brown bear range"],
+        "blurb": "The second-highest plateau on earth — a short, weather-bound season "
+                 "of wildflowers, brown bear and camping above 4,000 m.",
+    },
+    {
+        "id": "dest-fairy-meadows",
+        "photo_query": "Fairy Meadows",
+        "lat": 35.3878, "lon": 74.5783,
+        "name": "Fairy Meadows",
+        "valley": "Nanga Parbat",
+        "weather_city": "Fairy Meadows",
+        "routes": ["fairy-meadows"],
+        "elevation_m": 3300,
+        "interests": ["Trekking", "Mountains", "Camping", "Photography"],
+        "best_months": [5, 6, 7, 8, 9, 10],
+        "daily_cost_pkr": 11000,
+        "drive_hours_from": {"Islamabad": 12.0, "Gilgit": 3.5, "Chilas": 1.5, "Skardu": 9.0},
+        "attractions": ["Nanga Parbat north face", "Beyal Camp", "Raikot Glacier viewpoint"],
+        "blurb": "A meadow at the foot of the world's ninth-highest mountain, reached "
+                 "by jeep track and a walk-in — the shortest big-mountain trip in the north.",
+    },
+    {
+        "id": "dest-chitral",
+        "photo_query": "Bumburet Kalash valley",
+        "lat": 35.8511, "lon": 71.7864,
+        "name": "Chitral",
+        "valley": "Chitral",
+        "weather_city": "Chitral",
+        "routes": ["shandur-chitral"],
+        "elevation_m": 1500,
+        "interests": ["Culture", "Festival", "Heritage", "Mountains", "Photography"],
+        "best_months": [4, 5, 6, 7, 8, 9, 10],
+        "daily_cost_pkr": 12500,
+        "drive_hours_from": {"Islamabad": 14.0, "Gilgit": 12.0, "Chilas": 14.0, "Skardu": 18.0},
+        "attractions": ["Kalash valleys (Bumburet, Rumbur, Birir)", "Chitral Fort",
+                        "Shandur Pass", "Tirich Mir viewpoints"],
+        "blurb": "Hindu Kush rather than Karakoram, and the Kalash valleys — the one "
+                 "destination here reached from the Peshawar side, not the KKH.",
+    },
+]
+
+
+def destination_index():
+    return {d["id"]: d for d in DESTINATIONS}
+
+
+def destination_by_name(name: str) -> dict | None:
+    n = (name or "").strip().lower()
+    return next((d for d in DESTINATIONS if d["name"].lower() == n), None)
+
+
 def route_index():
     return {r["id"]: r for r in ROUTES}
 
@@ -452,3 +581,40 @@ def package_with_operator(pkg: dict) -> dict:
     out = dict(pkg)
     out["operator"] = ops[pkg["operator_id"]]
     return out
+
+
+def package_index():
+    return {p["id"]: p for p in PACKAGES}
+
+
+# --------------------------------------------------------------------------
+# Package listing fields
+#
+#   highlight     one line for the card, under the title
+#   photo_query   what the photo service searches for; the destination name
+#                 alone often returns maps or portraits
+#   images        uploaded or pasted photo URLs, shown before searched ones
+#   operator_url  the operator's own page for this package
+#   whatsapp      the operator's WhatsApp number, digits only with country code
+#   source        "seed" for the rows above, "admin" for ones added in the app
+#
+# The seeded operators are sample businesses, so they carry no website or
+# WhatsApp number: a made-up URL or phone number would send a traveler to a
+# real stranger. The card hides those two buttons until an admin fills them in.
+# --------------------------------------------------------------------------
+PACKAGE_DEFAULTS = {
+    "highlight": "", "photo_query": "", "images": [], "operator_url": "",
+    "whatsapp": "", "source": "seed",
+}
+
+
+def normalize_package(pkg: dict) -> dict:
+    out = {**PACKAGE_DEFAULTS, **pkg}
+    out["images"] = list(out.get("images") or [])
+    if not out["photo_query"]:
+        dest = destination_by_name(out.get("destination", ""))
+        out["photo_query"] = (dest or {}).get("photo_query") or out.get("destination", "")
+    return out
+
+
+PACKAGES[:] = [normalize_package(p) for p in PACKAGES]

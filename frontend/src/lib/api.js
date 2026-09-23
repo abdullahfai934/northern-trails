@@ -8,29 +8,83 @@ const BASE = import.meta.env.VITE_API_BASE || ''
 let tokenProvider = async () => ''
 export function setTokenProvider(fn) { tokenProvider = fn }
 
+/**
+ * An API failure with a message fit to show a traveler, plus per-field
+ * messages when the server rejected a form (FastAPI's 422 detail list).
+ */
+export class ApiError extends Error {
+  constructor(message, status = 0, fields = {}) {
+    super(message)
+    this.status = status
+    this.fields = fields
+  }
+}
+
+function fieldKey(loc = []) {
+  return loc.filter((x) => x !== 'body' && x !== 'query').join('.')
+}
+
+async function errorFrom(res) {
+  let body = null
+  try { body = await res.json() } catch { /* not JSON */ }
+  const detail = body?.detail
+  if (Array.isArray(detail)) {
+    const fields = {}
+    for (const d of detail) {
+      const key = fieldKey(d.loc)
+      if (key && !fields[key]) fields[key] = String(d.msg || '').replace(/^Value error, /, '')
+    }
+    const first = Object.values(fields)[0] || 'Some fields need attention.'
+    return new ApiError(first, res.status, fields)
+  }
+  if (typeof detail === 'string') return new ApiError(detail, res.status)
+  if (res.status >= 500) return new ApiError('The server hit a problem. Please try again in a moment.', res.status)
+  return new ApiError(res.statusText || 'Request failed', res.status)
+}
+
 async function req(path, opts = {}) {
-  const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) }
+  const { timeout = 30000, headers: extra, body, ...rest } = opts
+  const isForm = typeof FormData !== 'undefined' && body instanceof FormData
+  const headers = { ...(isForm ? {} : { 'Content-Type': 'application/json' }), ...(extra || {}) }
   try {
     const token = await tokenProvider()
     if (token) headers.Authorization = `Bearer ${token}`
   } catch { /* signed out, or Firebase unavailable — call anonymously */ }
 
-  const res = await fetch(BASE + path, {
-    ...opts,
-    headers,
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
-  })
-  if (!res.ok) throw new Error((await res.text()) || res.statusText)
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), timeout)
+  let res
+  try {
+    res = await fetch(BASE + path, {
+      ...rest,
+      headers,
+      body: isForm ? body : body !== undefined ? JSON.stringify(body) : undefined,
+      signal: ctrl.signal,
+    })
+  } catch (e) {
+    throw new ApiError(e?.name === 'AbortError'
+      ? 'The server took too long to respond. Please try again.'
+      : 'Could not reach the server. Check your connection and try again.')
+  } finally {
+    clearTimeout(timer)
+  }
+  if (!res.ok) throw await errorFrom(res)
   return res.json()
 }
 
 export const api = {
-  bootstrap: () => req('/api/bootstrap'),
+  bootstrap: (opts) => req('/api/bootstrap', opts),
   packages: (params = {}) => {
     const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== '' && v !== 0))
     return req('/api/packages?' + q)
   },
   package: (id) => req(`/api/packages/${id}`),
+
+  // --- planning & destinations ---
+  plan: (body) => req('/api/plan', { method: 'POST', body }),
+  planMethodology: () => req('/api/plan/methodology'),
+  destinations: () => req('/api/destinations'),
+  destination: (id) => req(`/api/destinations/${id}`),
   book: (body) => req('/api/bookings', { method: 'POST', body }),
   conditions: () => req('/api/conditions'),
   requestTrip: (body) => req('/api/trips/request', { method: 'POST', body }),
@@ -39,7 +93,24 @@ export const api = {
   reject: (rid, body) => req(`/api/trips/${rid}/reject`, { method: 'POST', body }),
   jobs: (opId) => req(`/api/operators/${opId}/jobs`),
   availability: (opId, available) => req(`/api/operators/${opId}/availability`, { method: 'POST', body: { available } }),
-  chat: (message, history = []) => req('/api/assistant/chat', { method: 'POST', body: { message, history } }),
+  // Gemini can take a while on a long answer; give it longer than a page load.
+  chat: (message, history = []) => req('/api/assistant/chat', { method: 'POST', body: { message, history }, timeout: 60000 }),
+
+  // --- photos & places ---
+  photos: (q, count = 6) => req('/api/photos?' + new URLSearchParams({ q, count }), { timeout: 20000 }),
+  restaurants: (destination) => req('/api/places/restaurants?' + new URLSearchParams({ destination }), { timeout: 60000 }),
+
+  // --- package admin (token sent per call, never stored in the bundle) ---
+  adminStatus: () => req('/api/admin/status'),
+  adminVerify: (token) => req('/api/admin/verify', { method: 'POST', headers: { 'X-Admin-Token': token } }),
+  adminCreate: (token, body) => req('/api/admin/packages', { method: 'POST', body, headers: { 'X-Admin-Token': token } }),
+  adminUpdate: (token, id, body) => req(`/api/admin/packages/${id}`, { method: 'PUT', body, headers: { 'X-Admin-Token': token } }),
+  adminDelete: (token, id) => req(`/api/admin/packages/${id}`, { method: 'DELETE', headers: { 'X-Admin-Token': token } }),
+  adminUpload: (token, file) => {
+    const form = new FormData()
+    form.append('file', file)
+    return req('/api/admin/images', { method: 'POST', body: form, headers: { 'X-Admin-Token': token }, timeout: 60000 })
+  },
 
   // --- on-demand trips ---
   tripQuote: (params) => req('/api/trips/quote?' + new URLSearchParams(params)),
@@ -75,8 +146,18 @@ export const api = {
  */
 export const apiDocsUrl = BASE ? `${BASE}/api/docs` : ''
 
-/** True when this build was given an explicit API origin. */
-export const hasApiOrigin = Boolean(BASE)
+/** Uploaded images are served by the API; absolute URLs pass through. */
+export const assetUrl = (u) => (u && u.startsWith('/api/') ? BASE + u : u)
+
+/** wa.me link with a pre-filled message about one package. */
+export function whatsappUrl(pkg) {
+  const digits = String(pkg?.whatsapp || '').replace(/\D/g, '')
+  if (!digits) return ''
+  const text = `Hello ${pkg.operator?.name || ''}, I found your "${pkg.title}" package ` +
+    `(${pkg.days} days, ${pkr(pkg.price_pkr)} per person) on Northern Trails. ` +
+    'Is it available for my dates?'
+  return `https://wa.me/${digits}?text=${encodeURIComponent(text.replace(/\s+/g, ' '))}`
+}
 
 export function postToGateway({ post_url, fields }) {
   const form = document.createElement('form')

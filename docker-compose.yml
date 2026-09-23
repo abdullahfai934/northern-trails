@@ -28,7 +28,14 @@ services:
 
       # Optional — without it the assistant runs its deterministic grounded engine.
       GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
-      GEMINI_MODEL: "${GEMINI_MODEL:-gemini-2.0-flash}"
+      GEMINI_MODEL: "${GEMINI_MODEL:-gemini-3.6-flash}"
+
+      # Package admin screen (/admin). Unset = switched off.
+      ADMIN_TOKEN: "${ADMIN_TOKEN:-}"
+
+      # Optional — photos and restaurants fall back to Wikimedia and OpenStreetMap.
+      UNSPLASH_ACCESS_KEY: "${UNSPLASH_ACCESS_KEY:-}"
+      GOOGLE_PLACES_API_KEY: "${GOOGLE_PLACES_API_KEY:-}"
 
       # Optional — live weather. Without it the seeded rows stand.
       OPENWEATHER_API_KEY: "${OPENWEATHER_API_KEY:-}"

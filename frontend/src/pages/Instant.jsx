@@ -7,6 +7,7 @@ import {
 
 import { useData, travelerId } from '../lib/store'
 import { api, pkr, wsUrl } from '../lib/api'
+import { closeSocket } from '../lib/socket'
 import { fetchRoute } from '../lib/liveDirect'
 import { Reveal, SectionTitle, Stars, ease, useToast } from '../components/ui'
 
@@ -44,6 +45,8 @@ export default function Instant() {
 
   /* ------------------------------------------------- traveler socket */
   useEffect(() => {
+    // The dispatcher lives on the API; open the socket once it has answered.
+    if (d?.offline || !d?.ready) return undefined
     const ws = new WebSocket(wsUrl(`/ws/traveler/${me}`))
     wsRef.current = ws
     ws.onmessage = (ev) => {
@@ -78,8 +81,8 @@ export default function Instant() {
         toast('No operator responded in time. Try widening the pickup point.', 'warn')
       }
     }
-    return () => ws.close()
-  }, [me, toast])
+    return () => closeSocket(ws)
+  }, [me, toast, d?.offline, d?.ready])
 
   /* --------------------------------------------- live fare + routing
      The fare comes from the real road route between the two towns, so the
@@ -117,8 +120,10 @@ export default function Instant() {
 
   /* ------------------------------------------- real, persisted history */
   useEffect(() => {
+    if (d?.offline || !d?.ready) return
+    // History is secondary: if it fails, the section simply stays empty.
     api.tripHistory(me).then((r) => setHistory(r.items || [])).catch(() => {})
-  }, [me, phase])
+  }, [me, phase, d?.offline, d?.ready])
 
   /* ------------------------------------------------------- countdown */
   useEffect(() => {
@@ -158,7 +163,7 @@ export default function Instant() {
         />
       </Reveal>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         {/* ------------------------------------------------- left column */}
         <div>
           <AnimatePresence mode="wait">
@@ -278,7 +283,7 @@ export default function Instant() {
                       transition={{ type: 'spring', stiffness: 300, damping: 26, delay: i * 0.04 }}
                       className="glass rounded-2xl p-5">
                       <div className="flex items-start gap-3">
-                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-sm font-black text-ink-950"
+                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-sm font-black text-abyss"
                               style={{ background: `hsl(${o.operator.avatar_hue} 70% 62%)` }}>
                           {o.operator.name[0]}
                         </span>
@@ -348,7 +353,7 @@ export default function Instant() {
                               animate={{ scale: active ? [1, 1.35, 1] : 1 }}
                               transition={{ repeat: active ? Infinity : 0, duration: 1.8 }}
                               className={`grid h-6 w-6 place-items-center rounded-full text-[10px] font-bold transition-colors duration-500
-                                ${done ? 'bg-glacier-400 text-ink-950' : 'bg-white/10 text-frost-400'}`}>
+                                ${done ? 'bg-glacier-400 text-abyss' : 'bg-white/10 text-frost-400'}`}>
                               {done ? <Check className="h-3 w-3" strokeWidth={3.5} /> : i + 1}
                             </motion.span>
                             {i < STAGE_STEPS.length - 1 && (
@@ -414,7 +419,7 @@ export default function Instant() {
             <div className="space-y-3">
               {d.operators.map((o) => (
                 <div key={o.id} className="flex items-center gap-3">
-                  <span className="relative grid h-8 w-8 place-items-center rounded-lg text-[11px] font-black text-ink-950"
+                  <span className="relative grid h-8 w-8 place-items-center rounded-lg text-[11px] font-black text-abyss"
                         style={{ background: `hsl(${o.avatar_hue} 70% 62%)` }}>
                     {o.name[0]}
                     <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-ink-950" />

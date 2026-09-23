@@ -1,41 +1,54 @@
-# Render.com blueprint — API + built SPA on one service, plus PostGIS.
-databases:
-  - name: northern-trails-db
-    databaseName: northern_trails
-    user: northern
-    plan: free
-    postgresMajorVersion: "16"
-
+# Render.com blueprint — the API (and a copy of the SPA) as one Docker web service.
+#
+# Deploy: Render dashboard → New → Blueprint → pick this repository.
+# Render asks for every `sync: false` value below on first deploy; paste them
+# there, never into the repo. ADMIN_TOKEN is generated for you — read it back
+# from the service's Environment tab to sign in at /admin.
+#
+# Database: point DATABASE_URL at any PostgreSQL 16 with PostGIS. A free Neon
+# project (neon.tech) works and does not expire; enable PostGIS once with
+#   CREATE EXTENSION postgis;
+# (the app also attempts this on startup). Leave DATABASE_URL empty and the
+# app still runs, in memory, but bookings and admin packages reset on restart.
 services:
   - type: web
-    name: northern-trails
+    name: northern-trails-api
     runtime: docker
     dockerfilePath: ./Dockerfile
     plan: free
+    region: singapore
     healthCheckPath: /api/health
+    autoDeploy: true
     envVars:
-      # Render injects the connection string; PostGIS must be enabled once
-      # with: CREATE EXTENSION postgis;  (the app attempts this on startup).
       - key: DATABASE_URL
-        fromDatabase:
-          name: northern-trails-db
-          property: connectionString
-      - key: POLL_ENABLED
-        value: "1"
-      - key: GEMINI_MODEL
-        value: gemini-2.0-flash
-      - key: CORS_ORIGINS
-        value: "*"
-      # Secrets — set these in the Render dashboard, never in the repo.
+        sync: false
       - key: GEMINI_API_KEY
         sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.6-flash
+      - key: ADMIN_TOKEN
+        generateValue: true
+      - key: POLL_ENABLED
+        value: "1"
+      - key: LOOKUPS_ENABLED
+        value: "1"
+      # The Firebase Hosting site calls this API from the browser.
+      - key: CORS_ORIGINS
+        value: "https://northern-trails-fyp.web.app,https://northern-trails-fyp.firebaseapp.com,http://localhost:5173"
+      - key: PAYMENTS_PROVIDER
+        value: mock
+      - key: PAYMENTS_RETURN_URL
+        value: https://northern-trails-fyp.web.app/pay/return
+      - key: FIREBASE_PROJECT_ID
+        value: northern-trails-fyp
+      # Optional keys — each switches one integration from its free fallback.
       - key: OPENWEATHER_API_KEY
         sync: false
-      - key: FIREBASE_PROJECT_ID
+      - key: UNSPLASH_ACCESS_KEY
+        sync: false
+      - key: GOOGLE_PLACES_API_KEY
         sync: false
       - key: FCM_SERVICE_ACCOUNT_JSON
-        sync: false
-      - key: PAYMENTS_PROVIDER
         sync: false
       - key: JAZZCASH_MERCHANT_ID
         sync: false

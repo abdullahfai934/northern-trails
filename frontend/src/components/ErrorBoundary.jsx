@@ -39,7 +39,7 @@ export default class ErrorBoundary extends React.Component {
         <div className="mt-6 flex justify-center gap-3">
           <button
             onClick={() => window.location.reload()}
-            className="rounded-xl bg-glacier-400 px-5 py-2.5 text-sm font-semibold text-ink-950"
+            className="rounded-xl bg-glacier-400 px-5 py-2.5 text-sm font-semibold text-abyss"
           >
             Reload
           </button>

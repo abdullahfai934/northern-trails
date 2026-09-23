@@ -2,11 +2,51 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: dark; }
+/*
+ * Theme tokens — see tailwind.config.js. Channels only ("r g b"), so
+ * Tailwind's opacity modifiers keep working: bg-ink-900/80, text-frost-300/70.
+ */
+:root, :root[data-theme='dark'] {
+  color-scheme: dark;
+  --ink-950: 7 11 20;   --ink-900: 11 18 32;  --ink-850: 15 23 39;
+  --ink-800: 20 29 48;  --ink-700: 28 39 64;
+  --frost-50: 244 248 255;  --frost-100: 228 237 251; --frost-200: 195 212 238;
+  --frost-300: 147 174 212; --frost-400: 102 132 175;
+  --overlay: 255 255 255;
+  --glacier-200: 180 238 242; --glacier-300: 126 224 230;
+  --saffron-300: 255 210 138;
+  --amberz-100: 253 239 200; --amberz-200: 251 227 166; --amberz-300: 252 215 127;
+  --rose-200: 254 205 211; --rose-300: 253 164 175;
+  --emerald-300: 110 231 183; --sky-300: 125 211 252; --orange-300: 253 186 116;
+  --shadow: 2 8 23;
+  --grain: .035;
+  --glass-bg: rgba(255,255,255,.035);
+  --glass-border: rgba(255,255,255,.07);
+  --glass-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 24px 60px -34px rgba(0,0,0,.9);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --ink-950: 244 246 250; --ink-900: 255 255 255; --ink-850: 247 249 252;
+  --ink-800: 238 242 247; --ink-700: 226 232 240;
+  --frost-50: 11 18 32;   --frost-100: 23 34 53;  --frost-200: 43 58 82;
+  --frost-300: 74 90 116; --frost-400: 100 114 138;
+  --overlay: 15 23 42;
+  --glacier-200: 11 111 122; --glacier-300: 8 124 138;
+  --saffron-300: 180 83 9;
+  --amberz-100: 120 53 15; --amberz-200: 146 64 14; --amberz-300: 170 78 8;
+  --rose-200: 159 18 57; --rose-300: 190 18 60;
+  --emerald-300: 4 120 87; --sky-300: 3 105 161; --orange-300: 194 65 12;
+  --shadow: 100 116 139;
+  --grain: .018;
+  --glass-bg: rgba(255,255,255,.72);
+  --glass-border: rgba(15,23,42,.08);
+  --glass-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 20px 50px -30px rgba(15,23,42,.28);
+}
 
 * { -webkit-tap-highlight-color: transparent; }
 
-html, body, #root { height: 100%; }
+html, body, #root { min-height: 100%; }
 
 body {
   @apply bg-ink-950 text-frost-100 font-sans antialiased;
@@ -16,11 +56,14 @@ body {
     radial-gradient(60% 50% at 50% 110%, rgba(99,102,241,.14), transparent 60%);
   background-attachment: fixed;
   overflow-x: hidden;
+  transition: background-color .4s ease, color .4s ease;
 }
+
+h1, h2, h3, .font-display { font-family: Poppins, Inter, system-ui, sans-serif; letter-spacing: -0.02em; }
 
 /* fine film grain keeps the large gradients from banding */
 body::after {
-  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 60; opacity: .035;
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 60; opacity: var(--grain);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
@@ -31,8 +74,10 @@ body::after {
 
 @layer components {
   .glass {
-    @apply border border-white/[.07] bg-white/[.035] backdrop-blur-xl;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 24px 60px -34px rgba(0,0,0,.9);
+    @apply border backdrop-blur-xl;
+    background-color: var(--glass-bg);
+    border-color: var(--glass-border);
+    box-shadow: var(--glass-shadow);
   }
   .glass-strong {
     @apply border border-white/[.1] bg-ink-900/80 backdrop-blur-2xl;
@@ -47,7 +92,7 @@ body::after {
            transition-all duration-300 active:scale-[.97] disabled:opacity-40 disabled:pointer-events-none;
   }
   .btn-primary {
-    @apply btn text-ink-950;
+    @apply btn text-abyss;
     background: linear-gradient(120deg, #7ee0e6, #38c9d6 45%, #f5b73d);
     box-shadow: 0 14px 40px -16px rgba(56,201,214,.7);
   }
@@ -66,7 +111,7 @@ body::after {
 
 @layer utilities {
   .text-gradient {
-    background: linear-gradient(115deg, #f4f8ff 8%, #7ee0e6 46%, #f5b73d 92%);
+    background: linear-gradient(115deg, rgb(var(--frost-50)) 8%, #38c9d6 46%, #f5b73d 92%);
     -webkit-background-clip: text; background-clip: text; color: transparent;
   }
   .mask-fade-r { mask-image: linear-gradient(to right, #000 75%, transparent); }
@@ -86,3 +131,23 @@ body::after {
 .nt-range::-moz-range-thumb {
   @apply h-4 w-4 rounded-full border-2 border-ink-950 bg-glacier-300;
 }
+
+/* A photo hero keeps its dark treatment in both themes: the copy sits on the
+   image, not on the page background. */
+.on-photo { --frost-50: 244 248 255; --frost-100: 228 237 251; --frost-200: 195 212 238;
+            --frost-300: 206 218 236; --frost-400: 170 188 214; --overlay: 255 255 255;
+            --glacier-200: 180 238 242; --glacier-300: 126 224 230;
+            --amberz-300: 252 215 127; --rose-200: 254 205 211; --rose-300: 253 164 175;
+            --glass-bg: rgba(7,11,20,.38); --glass-border: rgba(255,255,255,.14);
+            --glass-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 24px 60px -34px rgba(0,0,0,.9); }
+
+/* Leaflet: match the card surfaces and keep attribution legible */
+.leaflet-container { background: rgb(var(--ink-850)); font-family: Inter, system-ui, sans-serif; }
+.leaflet-popup-content-wrapper, .leaflet-popup-tip { background: rgb(var(--ink-900)); color: rgb(var(--frost-100)); }
+.leaflet-popup-content { margin: 10px 12px; font-size: 12px; }
+.leaflet-control-attribution { font-size: 9px; }
+:root[data-theme='dark'] .leaflet-control-attribution { background: rgba(7,11,20,.7) !important; color: #93aed4; }
+:root[data-theme='dark'] .leaflet-control-attribution a { color: #7ee0e6; }
+:root[data-theme='dark'] .leaflet-bar a { background: #141d30; color: #e4edfb; border-color: #1c2740; }
+/* A dark basemap from the standard OSM tiles, no styled-tile API key needed */
+:root[data-theme='dark'] .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.9) contrast(.88) saturate(.7); }

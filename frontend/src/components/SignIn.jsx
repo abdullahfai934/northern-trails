@@ -107,7 +107,7 @@ export function SignInSheet({ open, onClose }) {
           <button
             type="submit"
             disabled={busy || !phoneValid}
-            className="w-full rounded-xl bg-glacier-400 py-3 font-semibold text-ink-950 transition disabled:opacity-40"
+            className="w-full rounded-xl bg-glacier-400 py-3 font-semibold text-abyss transition disabled:opacity-40"
           >
             {busy ? 'Sending…' : 'Send code'}
           </button>
@@ -130,7 +130,7 @@ export function SignInSheet({ open, onClose }) {
           <button
             type="submit"
             disabled={busy || code.length < 6}
-            className="w-full rounded-xl bg-glacier-400 py-3 font-semibold text-ink-950 transition disabled:opacity-40"
+            className="w-full rounded-xl bg-glacier-400 py-3 font-semibold text-abyss transition disabled:opacity-40"
           >
             {busy ? 'Verifying…' : 'Verify & sign in'}
           </button>
@@ -200,7 +200,7 @@ export function AuthButton() {
           <button
             onClick={signOut}
             title="Sign out"
-            className="rounded-full border border-ink-700 p-2 text-frost-300 transition hover:text-frost-50"
+            className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 text-frost-300 transition hover:text-frost-50"
           >
             <LogOut className="h-4 w-4" />
           </button>
@@ -208,10 +208,11 @@ export function AuthButton() {
       ) : (
         <button
           onClick={() => setOpen(true)}
-          className="flex items-center gap-1.5 rounded-full border border-ink-700 bg-ink-850 px-3 py-1.5 text-xs font-medium text-frost-200 transition hover:border-glacier-500/40 hover:text-frost-50"
+          aria-label="Sign in with your phone"
+          className="flex h-9 items-center gap-1.5 rounded-lg border border-white/10 bg-white/[.04] px-2.5 text-xs font-medium text-frost-200 transition hover:border-glacier-500/40 hover:text-frost-50 sm:px-3"
         >
           <Phone className="h-3.5 w-3.5" />
-          Sign in
+          <span className="hidden sm:inline">Sign in</span>
         </button>
       )}
       <SignInSheet open={open} onClose={() => setOpen(false)} />

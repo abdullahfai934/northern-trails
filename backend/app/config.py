@@ -35,6 +35,19 @@ def _int(name: str, default: int) -> int:
 DATABASE_URL = _flag("DATABASE_URL")
 DB_ECHO = _flag("DB_ECHO").lower() in ("1", "true", "yes")
 
+# ------------------------------------------------------------- AI assistant
+#: Read here rather than in assistant.py: this module is what calls
+#: load_dotenv(), and main.py imports `assistant` before anything that pulls
+#: config in. Reading os.environ directly from assistant.py therefore ran
+#: before .env was loaded and the key always came back empty.
+GEMINI_KEY = _flag("GEMINI_API_KEY")
+GEMINI_MODEL = _flag("GEMINI_MODEL", "gemini-3.6-flash")
+#: Gemini 3.x models spend tokens on internal reasoning before emitting any
+#: text. Left unbounded they can exhaust the output budget and return a
+#: candidate with no parts at all, which reads as "the model failed".
+GEMINI_THINKING = _flag("GEMINI_THINKING_LEVEL", "low")
+GEMINI_MAX_TOKENS = _int("GEMINI_MAX_OUTPUT_TOKENS", 2048)
+
 # ------------------------------------------------------------------ sources
 OPENWEATHER_KEY = _flag("OPENWEATHER_API_KEY")
 POLL_ENABLED = _flag("POLL_ENABLED", "1").lower() in ("1", "true", "yes")
@@ -46,6 +59,28 @@ SOURCE_USER_AGENT = _flag(
     "SOURCE_USER_AGENT",
     "NorthernTrails/1.0 (+https://github.com/northern-trails; conditions poller)",
 )
+
+# ------------------------------------------------------- photos and places
+#: unsplash.com/developers — optional. Without it photos come from Wikimedia
+#: Commons, which needs no key.
+UNSPLASH_KEY = _flag("UNSPLASH_ACCESS_KEY")
+#: Google Places API (New) — optional. Without it restaurants come from
+#: OpenStreetMap through the Overpass API, which needs no key.
+GOOGLE_PLACES_KEY = _flag("GOOGLE_PLACES_API_KEY")
+#: Comma-separated Overpass endpoints, tried in order. The public servers
+#: rate-limit bursts, so a second mirror keeps lookups working.
+OVERPASS_URLS = [u.strip() for u in _flag(
+    "OVERPASS_URLS",
+    "https://overpass-api.de/api/interpreter,https://overpass.private.coffee/api/interpreter",
+).split(",") if u.strip()]
+#: Set to 0 to stop the photo and restaurant services calling out at all
+#: (the test suite does this). They then return empty results.
+LOOKUPS_ENABLED = _flag("LOOKUPS_ENABLED", "1").lower() in ("1", "true", "yes")
+
+# -------------------------------------------------------------------- admin
+#: Shared secret for the package admin screen. Unset = admin is switched off
+#: and every /api/admin route answers 503, so a fresh deploy is never open.
+ADMIN_TOKEN = _flag("ADMIN_TOKEN")
 
 # --------------------------------------------------------------------- auth
 FIREBASE_PROJECT_ID = _flag("FIREBASE_PROJECT_ID")
@@ -89,6 +124,7 @@ def payments_configured(provider: str) -> bool:
 def feature_report() -> dict:
     """Live/fallback status for every integration, surfaced on /api/health."""
     return {
+        "assistant": "gemini:" + GEMINI_MODEL if GEMINI_KEY else "grounded-offline",
         "database": "postgis" if DATABASE_URL else "in-memory",
         "weather": ("open-meteo+openweathermap" if (POLL_ENABLED and OPENWEATHER_KEY)
                     else "open-meteo" if POLL_ENABLED else "seeded"),
@@ -98,6 +134,9 @@ def feature_report() -> dict:
         "auth": ("firebase-emulator" if (FIREBASE_PROJECT_ID and FIREBASE_AUTH_EMULATOR_HOST)
                  else "firebase" if FIREBASE_PROJECT_ID else "disabled"),
         "push": "fcm" if FCM_SERVICE_ACCOUNT else "disabled",
+        "photos": "unsplash+wikimedia" if UNSPLASH_KEY else "wikimedia",
+        "restaurants": "google-places" if GOOGLE_PLACES_KEY else "openstreetmap",
+        "admin": "enabled" if ADMIN_TOKEN else "disabled",
         "payments": {
             "provider": PAYMENTS_PROVIDER,
             "mode": "live" if payments_configured(PAYMENTS_PROVIDER) and PAYMENTS_PROVIDER != "mock" else "sandbox/mock",

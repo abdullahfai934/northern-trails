@@ -103,6 +103,9 @@ async def seed_all(force: bool = False) -> dict:
                 tags=p.get("tags", []), includes=p.get("includes", []),
                 excludes=p.get("excludes", []), routes=p.get("routes", []),
                 itinerary=[list(i) for i in p.get("itinerary", [])],
+                highlight=p.get("highlight", ""), photo_query=p.get("photo_query", ""),
+                images=p.get("images", []), operator_url=p.get("operator_url", ""),
+                whatsapp=p.get("whatsapp", ""), source="seed",
             ))
         counts["packages"] = len(data.PACKAGES)
 

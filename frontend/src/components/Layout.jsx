@@ -2,11 +2,13 @@ import React, { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { AuthButton } from './SignIn'
 import { apiDocsUrl } from '../lib/api'
-import { useData } from '../lib/store'
-import { motion, useScroll, useSpring } from 'framer-motion'
-import { Compass, Zap, Radio, Sparkles, LayoutDashboard, Mountain, Github } from 'lucide-react'
+import { useTheme } from '../lib/theme'
+import { useWishlist } from '../lib/wishlist'
+import { AnimatePresence, motion, useScroll, useSpring } from 'framer-motion'
+import { Compass, Zap, Radio, Sparkles, LayoutDashboard, Mountain, Github, Wand2, Heart, Sun, Moon } from 'lucide-react'
 
 const NAV = [
+  { to: '/plan',       label: 'Plan',       icon: Wand2 },
   { to: '/explore',    label: 'Explore',    icon: Compass },
   { to: '/instant',    label: 'Instant',    icon: Zap },
   { to: '/conditions', label: 'Conditions', icon: Radio },
@@ -38,15 +40,16 @@ export function TopNav() {
 
   return (
     <header className={`fixed inset-x-0 top-0 z-[75] transition-all duration-500
-      ${solid ? 'border-b border-white/[.07] bg-ink-950/80 backdrop-blur-xl' : 'border-b border-transparent'}`}>
+      ${solid ? 'border-b border-white/[.07] bg-ink-950/80 backdrop-blur-xl' : 'border-b border-transparent'}
+      ${!solid && pathname === '/' ? 'on-photo' : ''}`}>
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
         <Link to="/" className="group flex items-center gap-2.5">
-          <span className="relative grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-glacier-400/90 to-amberz-400/80 text-ink-950 shadow-glow">
+          <span className="relative grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-glacier-400/90 to-amberz-400/80 text-abyss shadow-glow">
             <Mountain className="h-[18px] w-[18px]" strokeWidth={2.4} />
           </span>
           <span className="leading-tight">
-            <span className="block text-[15px] font-extrabold tracking-tight text-frost-50">Northern Trails</span>
-            <span className="block text-[10px] font-medium uppercase tracking-[.18em] text-frost-400">Gilgit-Baltistan · Chitral</span>
+            <span className="block font-display text-[15px] font-semibold tracking-normal text-frost-50">Northern Trails</span>
+            <span className="hidden text-[10px] font-medium uppercase tracking-[.18em] text-frost-400 sm:block">Gilgit-Baltistan · Chitral</span>
           </span>
         </Link>
 
@@ -69,7 +72,9 @@ export function TopNav() {
           })}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <WishlistLink />
+          <ThemeToggle />
           <AuthButton />
           {apiDocsUrl && (
             <a href={apiDocsUrl} target="_blank" rel="noreferrer"
@@ -77,12 +82,46 @@ export function TopNav() {
               API
             </a>
           )}
-          <Link to="/instant" className="btn-primary !px-4 !py-2 !text-[13px]">
+          <Link to="/instant" className="btn-primary !hidden !px-4 !py-2 !text-[13px] sm:!inline-flex">
             <Zap className="h-3.5 w-3.5" /> Get a ride
           </Link>
         </div>
       </div>
     </header>
+  )
+}
+
+function ThemeToggle() {
+  const { theme, toggle } = useTheme()
+  const dark = theme === 'dark'
+  return (
+    <button onClick={toggle} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'} title={dark ? 'Light mode' : 'Dark mode'}
+      className="relative grid h-9 w-9 place-items-center overflow-hidden rounded-lg border border-white/10 text-frost-200 transition hover:bg-white/[.06] hover:text-frost-50">
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.span key={theme} initial={{ y: 14, opacity: 0, rotate: -40 }} animate={{ y: 0, opacity: 1, rotate: 0 }}
+          exit={{ y: -14, opacity: 0, rotate: 40 }} transition={{ duration: 0.25 }}>
+          {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        </motion.span>
+      </AnimatePresence>
+    </button>
+  )
+}
+
+function WishlistLink() {
+  const { ids } = useWishlist()
+  return (
+    <Link to="/wishlist" aria-label={`Wishlist, ${ids.length} saved`} title="Wishlist"
+      className="relative grid h-9 w-9 place-items-center rounded-lg border border-white/10 text-frost-200 transition hover:bg-white/[.06] hover:text-frost-50">
+      <Heart className={`h-4 w-4 ${ids.length ? 'fill-rose-400 text-rose-400' : ''}`} />
+      <AnimatePresence>
+        {ids.length > 0 && (
+          <motion.span key={ids.length} initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
+            className="absolute -right-1.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-snow">
+            {ids.length}
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </Link>
   )
 }
 
@@ -126,8 +165,8 @@ export function Footer() {
             verified operator in real time — on top of a live road, weather and permit layer.
           </p>
         </div>
-        <FooterCol title="Product" links={[['Explore packages', '/explore'], ['Instant match', '/instant'], ['Live conditions', '/conditions'], ['AI assistant', '/assistant']]} />
-        <FooterCol title="Operators" links={[['Operator console', '/operator'], ['Verification', '/conditions'], ...(apiDocsUrl ? [['API reference', apiDocsUrl]] : [])]} />
+        <FooterCol title="Product" links={[['Explore packages', '/explore'], ['Plan a trip', '/plan'], ['Instant match', '/instant'], ['Live conditions', '/conditions'], ['AI assistant', '/assistant'], ['Your wishlist', '/wishlist']]} />
+        <FooterCol title="Operators" links={[['Operator console', '/operator'], ['Manage packages', '/admin'], ...(apiDocsUrl ? [['API reference', apiDocsUrl]] : [])]} />
         <DataSources />
       </div>
       <div className="mx-auto mt-12 flex max-w-7xl flex-col items-center justify-between gap-3 border-t border-white/[.06] pt-6 text-[12px] text-frost-400 sm:flex-row">

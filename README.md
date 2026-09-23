@@ -1,74 +1,217 @@
 # Northern Trails
 
-**AI-powered tour marketplace & live conditions assistant for Northern Pakistan.**
+**Tours, live travel-safety conditions and a grounded AI assistant for Northern Pakistan.**
 
-A hybrid booking platform for Gilgit-Baltistan and Chitral that runs two booking models over one
-verified-operator network, on top of a live road / weather / permit layer that also grounds the
-AI assistant.
+A web platform for Gilgit-Baltistan and Chitral: travelers compare and book multi-day
+tour packages, match with a driver or guide in real time, check live road, weather and
+earthquake conditions, find restaurants near a destination, and ask an AI assistant that
+answers only from the app's own live data.
+
+- **Live site:** https://northern-trails-fyp.web.app
+- **API reference (Swagger):** `<API URL>/api/docs`
+- Final Year Project — the sections below double as the technical write-up.
+
+---
+
+## Contents
+
+1. [The problem it addresses](#the-problem-it-addresses)
+2. [Features](#features)
+3. [Architecture](#architecture)
+4. [How the key features work](#how-the-key-features-work)
+5. [Design system](#design-system)
+6. [API reference](#api-reference)
+7. [Running locally](#running-locally)
+8. [Environment variables](#environment-variables)
+9. [Deployment](#deployment)
+10. [Testing and quality](#testing-and-quality)
+11. [Live-conditions layer, rides, accounts, payments](#the-live-conditions-layer)
+12. [Known limitations](#known-limitations)
+13. [Credits and data licences](#credits-and-data-licences)
 
 ---
 
 ## The problem it addresses
 
-Tourists planning trips to Hunza, Skardu, Chitral and Gilgit-Baltistan rely on scattered,
-unverified sources — Facebook groups, random forum posts, word of mouth — to check road status,
-weather, permits and tour operator legitimacy. Roads close frequently (landslides, snowfall,
-glacial lake outburst floods), and there is no centralised way to get current, trustworthy
-information or compare operators transparently.
+Tourists planning trips to Hunza, Skardu, Chitral and the rest of Gilgit-Baltistan rely on
+scattered, unverified sources — Facebook groups, forum posts, word of mouth — for road
+status, weather, permits and operator legitimacy. Roads close often (landslides, snowfall,
+glacial lake outburst floods), and there is no one place to get current, trustworthy
+information or to compare operators transparently.
 
-## What this builds
+## Features
 
-| Capability | Where it lives |
-|---|---|
-| Browse & compare multi-day packages (price, duration, pickup, destination) | `/explore` |
-| Real-time request-and-match for on-demand jeeps, transfers, guides and porters | `/instant` |
-| Live road status, weather, permits, hazards and GLOF alerts per route | `/conditions` |
-| AI assistant answering **only** from those live records, with citations | `/assistant` |
-| Operator-side console: accept/reject jobs, bid, toggle availability | `/operator` |
-| Verified-operator vetting against tourism-department registration | throughout |
-| Phone-OTP sign-in (Firebase), push notifications (FCM) | `/` header, `/conditions` |
-| Card/wallet checkout via JazzCash, Easypaisa or a sandbox gateway | `/explore/:id` → `/pay/return` |
+| Area | What the traveler gets | Where |
+|---|---|---|
+| **Tour packages** | Cards with a real destination photo, title, duration, PKR price, rating, operator and a highlight line. Actions: *View details* (modal with day-by-day itinerary, inclusions, exclusions and a photo gallery), *Book now*, *Visit operator website*, *Contact on WhatsApp* (pre-filled message), *Save to wishlist* and *Share* | `/explore`, home carousel |
+| **Infinite carousel** | Featured packages drift continuously; pauses on hover or focus, drag or swipe on mobile, arrow buttons, respects reduced-motion | `/` |
+| **Booking** | Validated form (name, phone, email, date, group size, notes) → booking stored in PostgreSQL as `pending_payment` → signed payment callback confirms it. Route warnings attached at booking time | from any card or detail page |
+| **Package admin** | Token-protected form: name, destination, operator, price, duration, day-by-day itinerary, inclusions/exclusions, operator website URL, WhatsApp number, image upload or URLs. Edit and delete | `/admin` |
+| **Nearby restaurants** | Leaflet map plus a list: name, cuisine, distance, phone/website when known, and a *Get directions* button that opens Google Maps | each package page |
+| **Wishlist** | Heart any package; saved per browser with a live count in the header | `/wishlist` |
+| **AI assistant** | Answers from live roads, weather, earthquakes/hazards, packages, prices and restaurants. Says "the road to X is closed — consider Y instead", refuses to invent packages or prices, says plainly when a place (e.g. Naran) is not covered. Typing indicator, retry on error, history kept across reloads | `/assistant` |
+| **Live conditions** | Road status, weather (Open-Meteo, optionally cross-checked by OpenWeatherMap), USGS earthquakes, GDACS hazards, PMD advisories, each with source and timestamp | `/conditions` |
+| **Trip planner** | Compares every destination against budget, days, group, interests and date, with a transparent Travel Condition Score | `/plan` |
+| **Instant match** | Request a jeep, guide or transfer; nearby operators bid over WebSockets; accept and track | `/instant`, `/operator` |
+| **Design** | Photo hero, glass cards, Poppins + Inter, light/dark toggle (follows the OS until chosen), scroll reveals, hover lift, animated counters, page transitions, skeleton loaders, fully responsive | everywhere |
 
 ---
 
 ## Architecture
 
 ```
-┌──────────────── React SPA (Vite + Tailwind + Framer Motion) ────────────────┐
-│  Explore   Instant match   Conditions   Assistant   Operator console        │
-└──────┬──────────────────────────────┬───────────────────────────────────────┘
-       │ REST /api/*                  │ WebSocket /ws/traveler/:id, /ws/operator/:id
-┌──────▼──────────────────────────────▼───────────────────────────────────────┐
-│                          FastAPI (backend/app)                              │
-│  main.py       REST surface, SPA hosting, socket endpoints                  │
-│  matching.py   dispatch hub: fan-out, response window, offers, tracking     │
-│  assistant.py  retrieve → context pack → answer → citations                 │
-│  data.py       seeded baseline: routes, alerts, weather, operators, packages│
-│  auth.py       Firebase ID-token verification (phone OTP)                   │
-│  push.py       Firebase Cloud Messaging (HTTP v1)                           │
-│  sources/      scheduled pollers → OpenWeatherMap, GDACS, PMD, NHA          │
-│  payments/     JazzCash · Easypaisa · sandbox, one provider interface       │
-│  db/           PostgreSQL + PostGIS models, seeding, spatial queries        │
-└──────┬──────────────────────────────────────────────────────────────────────┘
+┌──────────────────── React SPA (Vite · Tailwind · Framer Motion · Leaflet) ────────────────────┐
+│  Home  Explore  Package  Plan  Instant  Conditions  Assistant  Operator  Wishlist  Admin      │
+│  lib/store     bootstrap + background retry, snapshot while the API wakes                    │
+│  lib/photos    photo lookup → API → Wikimedia direct → gradient placeholder (cached 7 days)   │
+│  lib/places    restaurants → API → Overpass direct                                            │
+└──────┬──────────────────────────────────────┬─────────────────────────────────────────────────┘
+       │ REST /api/*                          │ WebSocket /ws/traveler/:id, /ws/operator/:id
+┌──────▼──────────────────────────────────────▼─────────────────────────────────────────────────┐
+│                                FastAPI (backend/app)                                          │
+│  main.py        REST surface, validation, SPA hosting, socket endpoints                       │
+│  assistant.py   retrieve → context pack (roads, weather, alerts, packages, restaurants,       │
+│                 alternatives) → Gemini or offline composer → citations                        │
+│  photos.py      Unsplash (key) → Wikimedia Commons, credited, cached 24 h                     │
+│  places.py      Google Places (key) → OpenStreetMap Overpass, widening radius, cached 12 h    │
+│  admin.py       token-guarded package CRUD + image upload                                     │
+│  planner.py     Travel Condition Score and destination comparison                             │
+│  matching.py    dispatch hub: fan-out, response window, offers, tracking                      │
+│  sources/       scheduled pollers → Open-Meteo, OpenWeatherMap, GDACS, USGS, PMD, NHA         │
+│  payments/      JazzCash · Easypaisa · sandbox behind one interface                           │
+│  db/            PostgreSQL + PostGIS models, idempotent migrations, seeding, spatial queries  │
+└──────┬────────────────────────────────────────────────────────────────────────────────────────┘
        │
-┌──────▼──────────────────────────────────────────────────────────────────────┐
-│  PostgreSQL 16 + PostGIS 3.4 — geography columns, ST_Distance dispatch      │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌──────▼───────────────────────────────────┐   ┌───────────────────────────────────────────────┐
+│ PostgreSQL 16 + PostGIS 3.4              │   │ External: Gemini · Open-Meteo · USGS · GDACS  │
+│ bookings, payments, packages, images,    │   │ Wikimedia · Unsplash · Overpass · Google      │
+│ trips, users, devices, spatial columns   │   │ Places · OSRM · Firebase Auth/FCM             │
+└──────────────────────────────────────────┘   └───────────────────────────────────────────────┘
 ```
+
+**Hosting.** The SPA is served by Firebase Hosting. The API runs as a Docker web service
+(Render blueprint in `render.yaml`) with PostgreSQL + PostGIS (Neon or any Postgres 16).
+The SPA is built with `VITE_API_BASE` pointing at the API.
+
+**Keys stay on the server.** Every secret — Gemini, Unsplash, Google Places, payment
+credentials, the admin token — is read by the backend from environment variables. The
+browser only ever receives results. The `VITE_*` variables are public by design (Firebase
+web config and the API URL) and contain no secrets.
 
 ### Fallback-first
 
-Every integration is optional and every one degrades instead of failing. With an
-empty `.env` the whole app runs on its seeded data layer and in-memory store — clone,
-install, run. Add a credential and that one subsystem switches to live; the rest stay
-as they were. `GET /api/health` reports the real mode of each:
+Every integration is optional and degrades instead of failing. With an empty `.env` the whole
+app runs on its seeded data layer and in-memory store. Add a credential and that one
+subsystem switches to live. `GET /api/health` reports the real mode of each:
 
 ```json
-{"database":"postgis","weather":"seeded","hazards":"gdacs","roads":"nha+pmd",
- "auth":"disabled","push":"disabled","payments":{"provider":"mock","mode":"sandbox/mock"}}
+{"assistant": "gemini:gemini-3.6-flash", "database": "postgis", "weather": "open-meteo",
+ "hazards": "gdacs+usgs", "photos": "wikimedia", "restaurants": "openstreetmap",
+ "admin": "enabled", "payments": {"provider": "mock", "mode": "sandbox/mock"}}
 ```
 
-This is deliberate: a demo must never break because a government website is down.
+The frontend follows the same rule. If the API is slow to answer (a free instance waking
+from idle), the pages draw from a bundled snapshot after 3.5 s, fetch weather and
+earthquakes straight from Open-Meteo and USGS, and keep retrying the API in the background.
+When it answers, its data replaces the snapshot in place. Every record carries its own
+timestamp, so nothing is presented as fresher than it is.
+
+---
+
+## How the key features work
+
+### Destination photos
+
+`GET /api/photos?q=Hunza%20Valley&count=6`
+
+1. **Unsplash** search when `UNSPLASH_ACCESS_KEY` is set (landscape, content-filtered).
+2. **Wikimedia Commons** otherwise — free, keyless, every image freely licensed. Results are
+   filtered to landscape photos at least 1000 px wide, and titles that are usually not scenery
+   (maps, diagrams, paintings, archive scans) are rejected.
+3. Each result carries author, licence and source link, shown as a credit on large photos.
+4. Cached per query for 24 h (memory plus a JSON file), with stale-if-error.
+
+In the browser, `PlacePhoto` shows an animated shimmer, fades the image in, moves to the next
+photo if one fails, and ends on a styled gradient card with the place name. A broken image is
+never shown. If the API is unreachable, the browser queries Wikimedia directly. Search terms
+are curated per destination (`photo_query`), because the bare name often returns maps or
+portraits.
+
+### Nearby restaurants
+
+`GET /api/places/restaurants?destination=Hunza`
+
+1. **Google Places API (New)** Nearby Search when `GOOGLE_PLACES_API_KEY` is set.
+2. **OpenStreetMap via Overpass** otherwise — named restaurants, cafés and fast food.
+3. The radius widens 2.5 km → 8 km → 25 km until something is found, and the radius used is
+   reported. Coverage is honest: Karimabad has 17 mapped places, the Deosai plains have none,
+   and the UI says so rather than inventing one.
+4. Every item has a Google Maps directions URL built from its coordinates.
+5. Overpass rate-limits bursts, so each mirror gets a second try after a short wait, then
+   the next mirror is used. Results are cached for 12 h.
+
+The page shows a Leaflet map (OpenStreetMap tiles, darkened with a CSS filter in dark mode)
+and a list. Choosing a list item flies the map to it.
+
+### Grounded AI assistant
+
+`POST /api/assistant/chat {message, history}`
+
+```
+question ──► retrieve()
+               ├─ whole-word matches on routes, alerts, weather, packages, operators
+               ├─ destinations named (Hunza, Karimabad, K2, Kalash…) + their roads & packages
+               ├─ places the app does not cover (Naran, Swat, Murree…) → NOT-COVERED line
+               ├─ food intent + destination → places.nearby() → RESTAURANT lines
+               └─ a closed road, or a restricted one asked about by name
+                  → ALTERNATIVE destinations that are reachable now (Travel Condition Score)
+                    with their real packages and prices
+          ──► build_context()   typed lines with stable ids: [skardu-road] ROAD | …
+          ──► Gemini (system rules below)   or   the deterministic offline composer
+          ──► answer + citations (the record ids it was given)
+```
+
+The system instruction forbids anything outside the context. It must never mention a
+package, price, operator or restaurant that isn't there, it must lead with a closure and
+then offer the listed alternatives, and it must say "not covered" instead of guessing.
+Without `GEMINI_API_KEY`, or if Gemini fails, times out or is rate-limited (it is retried
+twice on 429/503), the offline composer writes the same grounded answer from the same
+context. The key is sent in a header, never a URL, so it cannot leak into logs.
+
+Examples, verified in `tests/test_listings.py`:
+
+| Question | Answer shape |
+|---|---|
+| *Can I still cross Shandur Pass to Chitral?* | Closed at Langar, reroute via Lowari; **consider instead** Skardu (K2 trek, PKR 310,000) or Fairy Meadows (3 days, PKR 41,000) |
+| *Is the road to Naran open?* | No data for Naran — Gilgit-Baltistan and Chitral only; lists reachable destinations |
+| *Any cheap package to Chitral under 20k?* | Nothing in the catalogue under PKR 20,000; gives the nearest real option and its price |
+| *Where can I eat near Karimabad?* | Nearest restaurants from OpenStreetMap with distances, plus the active GLOF alert |
+
+### Package admin
+
+`/admin` asks for `ADMIN_TOKEN`, which the server checks with a constant-time comparison.
+The token is kept for the browser tab only, never in the bundle. With no token configured,
+the admin API answers 503, so a fresh deploy is never open.
+
+- Validation runs in the browser and again on the server (pydantic). Rules include: known
+  destination and operator, PKR 1,000–5,000,000, 1–30 days, one titled itinerary day per
+  day, `https://` operator URL, WhatsApp number normalised to wa.me format (`0300-1234567`
+  → `923001234567`), and at most 8 images.
+- Images are resized in the browser to 1600 px, uploaded, checked by magic bytes (not
+  filename) and stored **in the database** as `package_images` rows. A container's disk is
+  wiped on every deploy; a row is not. They are served at `/api/images/{id}` with immutable
+  caching.
+- New packages start at rating 0 ("New"), because ratings come from travelers, not the form.
+- Sample (seeded) packages can be edited but not deleted. A package that already has
+  bookings is archived instead of deleted, so booking history still resolves.
+
+### Booking and validation
+
+The booking form validates name, phone (`+92 300 1234567`), optional email, a start date
+that is not in the past and 1–20 travelers. The server repeats every check and returns
+per-field errors, which appear under the matching input. The booking is written to
+PostgreSQL (`bookings`) with any current route warnings. It becomes `confirmed` only when
+a payment callback passes signature verification.
 
 ### Real-time matching
 
@@ -83,20 +226,166 @@ This is deliberate: a demo must never break because a government website is down
 Operators with no live socket connected are simulated so the flow is demonstrable solo. Connect a
 real operator socket (open `/operator` in a second tab) and the simulation for that operator stops.
 
-### Assistant grounding
+---
 
-`retrieve()` does whole-word matching against route, alert, weather, package and operator records,
-plus whole-word intent detection (permit / road / safety / weather / package / operator). A topic
-keyword only pulls in defaults when the question named nothing of that kind — so "permits for
-Khunjerab" never drags in an unrelated closure. Matched records become a typed context pack with
-stable ids; the answer may only phrase what that pack contains, and each reply returns the record
-ids it used.
+## Design system
 
-If `GEMINI_API_KEY` is set, phrasing goes through Gemini under a strict system instruction. Without
-a key, a deterministic composer produces the same grounded answer offline — **the retrieval,
-citations and refusal behaviour are identical either way**. A question the data layer does not
-cover returns an explicit refusal rather than a guess.
+- **Type:** Poppins for headings, Inter for text, JetBrains Mono for figures and ids.
+- **Colour:** tokens defined once as CSS variables (`--ink-*` surfaces, `--frost-*` text,
+  `--overlay` tints, accents `glacier`, `amberz`, `rose`) and mapped into Tailwind. The
+  light/dark toggle swaps the variables, so every component follows without per-component
+  `dark:` classes. Copy over photos uses a fixed light treatment (`.on-photo`) in both themes.
+  The saved or system theme is applied by an inline script before first paint, so there is
+  no flash.
+- **Surfaces:** glass cards (translucent fill, backdrop blur, inner highlight), `shadow-glow` on hover.
+- **Motion (Framer Motion):** scroll-triggered fade/slide reveals, staggered grids, card hover
+  lift, spring page transitions, animated counters, Ken Burns hero photos, typing indicator.
+  All of it respects `prefers-reduced-motion`.
+- **Loading:** skeleton shimmer for every data-driven region, and error states with a retry button.
+- **Responsive:** tested at 390 px (phone) and 1440 px; bottom tab bar on mobile; no
+  horizontal overflow (grids use `minmax(0,1fr)` so wide content cannot stretch a column).
 
+---
+
+## API reference
+
+Interactive docs at `/api/docs`. The main endpoints:
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/api/health` | Live/fallback mode of every integration |
+| GET | `/api/bootstrap` | Packages, operators, routes, alerts, weather, destinations in one call |
+| GET | `/api/packages` · `/api/packages/{id}` | List with filters and sort · detail with route conditions, alerts, destination coordinates |
+| GET | `/api/photos?q=&count=` | Credited destination photos |
+| GET | `/api/places/restaurants?destination=` | Restaurants near a destination, nearest first |
+| POST | `/api/bookings` · GET `/api/bookings/{id}` | Create (validated) · read a booking |
+| POST | `/api/payments/start` · `/api/payments/callback` | Hosted checkout · signed callback |
+| POST | `/api/assistant/chat` | Grounded answer with citations |
+| GET | `/api/conditions` · `/api/conditions/sources` | Roads, alerts, weather · live-source status |
+| POST | `/api/plan` · GET `/api/destinations` | Trip planner · destinations with Travel Condition Score |
+| POST | `/api/trips/request` · WS `/ws/traveler/{id}` | On-demand request · live offers |
+| GET | `/api/admin/status` · POST `/api/admin/verify` | Is admin enabled · check a token |
+| POST/PUT/DELETE | `/api/admin/packages[/{id}]` | Package CRUD (`X-Admin-Token`) |
+| POST | `/api/admin/images` · GET `/api/images/{id}` | Upload (JPEG/PNG/WebP, ≤ 3 MB) · serve |
+
+---
+
+## Running locally
+
+Requires Node 18+ (20+ for the Firebase CLI) and Python 3.11+.
+
+```bash
+# one-time
+python3 -m venv backend/.venv
+backend/.venv/bin/pip install -r backend/requirements.txt
+cd frontend && npm install && cd ..
+cp .env.example .env            # fill in only what you have
+
+# optional: PostgreSQL + PostGIS
+docker compose up -d db         # then DATABASE_URL=postgresql://northern:northern@localhost:5432/northern_trails
+
+# run
+./scripts/api.sh                # FastAPI → http://localhost:8000  (docs at /api/docs)
+./scripts/web.sh                # Vite    → http://localhost:5173  (proxies /api and /ws)
+```
+
+To watch a live match end to end, open `/instant` in one tab and `/operator` in another,
+post a request, then bid from the operator tab.
+
+After changing seeded data in `backend/app/data.py`, regenerate the SPA's bundled snapshot:
+
+```bash
+backend/.venv/bin/python scripts/snapshot.py
+```
+
+---
+
+## Environment variables
+
+All of them are optional; `.env.example` documents each one. One `.env` at the repo root
+feeds both the API and the Vite build.
+
+| Variable | Used by | Without it |
+|---|---|---|
+| `DATABASE_URL` | PostgreSQL + PostGIS | in-memory; bookings and admin packages reset on restart |
+| `GEMINI_API_KEY`, `GEMINI_MODEL` | assistant phrasing | deterministic grounded composer |
+| `ADMIN_TOKEN` | `/admin` package screen | admin switched off (503) |
+| `UNSPLASH_ACCESS_KEY` | destination photos | Wikimedia Commons |
+| `GOOGLE_PLACES_API_KEY` | restaurants | OpenStreetMap / Overpass |
+| `OPENWEATHER_API_KEY` | second weather opinion | Open-Meteo only |
+| `FIREBASE_PROJECT_ID`, `VITE_FIREBASE_*` | phone OTP sign-in | sign-in hidden |
+| `FCM_SERVICE_ACCOUNT_JSON`, `VITE_FIREBASE_VAPID_KEY` | push notifications | push disabled |
+| `PAYMENTS_PROVIDER`, `JAZZCASH_*`, `EASYPAISA_*` | real payments | sandbox gateway |
+| `CORS_ORIGINS` | browser origins allowed to call the API | `*` |
+| `VITE_API_BASE` | where the SPA finds the API (build time) | same origin |
+
+---
+
+## Deployment
+
+The live setup needs nothing running on a personal machine.
+
+**1. Database.** Create a free PostgreSQL project on [Neon](https://neon.tech) (it does not
+expire), run `CREATE EXTENSION postgis;` once, and copy the connection string. Tables and
+seed data are created on first boot; later column additions are applied by idempotent
+migrations in `db/session.py`.
+
+**2. API on Render.** Render dashboard → **New → Blueprint** → this repository. `render.yaml`
+defines the Docker web service. Paste `DATABASE_URL`, `GEMINI_API_KEY` and any optional keys
+when prompted. `ADMIN_TOKEN` is generated for you; read it from the service's
+**Environment** tab. Check `https://<service>.onrender.com/api/health`.
+
+**3. Frontend on Firebase Hosting.**
+
+```bash
+./scripts/deploy-web.sh https://<service>.onrender.com
+```
+
+This builds the SPA against that API and deploys to `northern-trails-fyp.web.app`. Run it
+again only if the API URL changes.
+
+**Free-tier note.** A free Render instance sleeps after 15 minutes idle and takes up to a
+minute to wake. The site stays usable meanwhile — it shows the snapshot with live weather
+and earthquakes and swaps in live data when the API answers — but to avoid the wait, point
+a free uptime monitor (e.g. UptimeRobot) at `/api/health` every 10 minutes.
+
+**Alternative for a quick demo:** `./scripts/golive.sh` exposes the API on this machine
+through a Cloudflare quick tunnel and deploys the SPA against it. It only lives while the
+machine and the tunnel do, and the URL changes on every restart.
+
+The same Docker image also serves the built SPA itself, so the Render URL alone is a
+complete deployment too (`docker compose up` runs the same thing locally).
+
+---
+
+## Testing and quality
+
+```bash
+cd backend && .venv/bin/python -m pytest     # 155 tests, no network, no database needed
+```
+
+| File | Covers |
+|---|---|
+| `test_listings.py` | photo filtering/credits/fallback, restaurant sorting/radius widening/rate-limit retry, admin auth + CRUD + validation + image byte checks, booking validation, assistant alternatives / not-covered / no invented prices / restaurant answers |
+| `test_planner.py` | Travel Condition Score components, weights and destination fit |
+| `test_api.py` | region guard, booking lifecycle, double payment, grounded citations |
+| `test_payments.py` | JazzCash/Easypaisa signing, forged-callback rejection |
+| `test_auth.py` | Firebase token signature, audience, issuer, expiry |
+| `test_sources.py`, `test_geo.py`, `test_operators.py` | pollers, parsers, spatial attribution, operator console |
+
+External calls are served by `httpx.MockTransport` and caches point at a throwaway directory,
+so the suite is hermetic.
+
+**Frontend checks.** Every route was loaded in headless Chromium at 1440 px (dark) and
+390 px (light) with console errors, warnings, failed requests, HTTP errors and horizontal
+overflow collected: **zero issues**. A scripted end-to-end run covers:
+- the carousel drifts and pauses on hover
+- details modal and booking, including validation errors and a real saved booking
+- wishlist count and page, share-to-clipboard, and the theme toggle
+- restaurant directions links
+- the assistant: typing indicator, grounded answer, and history kept across a reload
+- admin: wrong-token rejection, validation, publish, the new card's WhatsApp and website
+  links, and delete
 
 ---
 
@@ -154,6 +443,8 @@ Merge policy matters as much as the fetching:
 
 ---
 
+---
+
 ## On-demand rides
 
 A ride is a real record, not an animation.
@@ -180,29 +471,6 @@ stops immediately; you bid for real. Nothing simulated is ever presented as a re
 driver.
 
 ---
-
-## Data layer
-
-`DATABASE_URL` unset → in-memory dicts, zero infrastructure. Set → PostgreSQL 16 with
-PostGIS 3.4; tables and seed data are created on first boot.
-
-Geometry is stored in `geography` columns so `ST_Distance` returns metres over the
-spheroid with no projection step:
-
-* `operators.location` — POINT, the base of operations
-* `routes.path` — LINESTRING, the drivable corridor
-* `alerts.location`, `weather.location` — POINT
-
-This replaces the hand-written proximity table in the dispatcher. `_candidates_async()`
-ranks operators with a real spatial query and falls back to the adjacency list if there
-is no database — dispatch never fails because of the storage layer.
-
-```
-Karimabad (Hunza)  ->  op-hunza-guides 0.0km · op-karakoram 54.2km · op-nanga 98.3km
-Skardu             ->  op-baltistan 0.0km · op-nanga 96.6km · op-karakoram 138.1km
-```
-
-Adding an operator now needs a coordinate, not a new row in a lookup table.
 
 ---
 
@@ -267,6 +535,8 @@ inert and logs what it would have sent.
 
 ---
 
+---
+
 ## Payments
 
 One provider interface, three implementations, selected by `PAYMENTS_PROVIDER`.
@@ -287,171 +557,28 @@ sandbox runs the identical flow.
 
 ---
 
-## Testing
-
-```bash
-backend/.venv/bin/python -m pytest        # from backend/
-```
-
-71 tests, no network and no database required — the suite runs anywhere,
-which is why CI needs no secrets.
-
-| Area | What it covers |
-|---|---|
-| `test_geo.py` | route/city coordinate coverage, hazard-to-road attribution, region bounds |
-| `test_sources.py` | NHA parsing and status grading, PMD severity, WMO codes, graceful degradation |
-| `test_payments.py` | JazzCash and Easypaisa signing, callback forgery rejection, reference uniqueness |
-| `test_auth.py` | token signature, audience, issuer, expiry and forgery rejection |
-| `test_api.py` | region guard, booking lifecycle, double-payment, grounded citations |
-
-Several are regression tests for bugs found during development, and each one
-says so in its docstring:
-
-- a flood in **Thailand** was attributed to a Deosai road, because
-  `nearest_routes` had no distance ceiling
-- an authority's stated road status of **"Caution"** was overridden to
-  `restricted` by the phrase *"single lane"* elsewhere in the row
-- **transaction references collided within 200 draws** — 4 hex characters of
-  entropy on the payments-table primary key
-- a **forged payment callback** must never confirm a booking
-- the bundled offline snapshot shipped **without the package→operator join**,
-  which blanked the entire site
-
-CI (`.github/workflows/ci.yml`) runs the backend suite, a production frontend
-build and a Docker image build on every push.
-
 ---
 
-## Running locally
+## Known limitations
 
-Requires Node 18+ and Python 3.11+.
+- **Sample operators.** The five seeded operators and their registration numbers are sample
+  data for the prototype. They deliberately have no website or WhatsApp number: a made-up
+  URL or phone number would send a traveler to a real stranger. Those two buttons appear as
+  soon as a package has them, which is what the admin screen is for.
+- **Road status.** NHA blocks automated requests, so road statuses come from the seeded
+  baseline plus PMD, GDACS and USGS signals (see above). Each carries its source and time.
+- **Restaurant coverage** is only as good as OpenStreetMap (or Google Places with a key).
+  Remote areas such as the Deosai plains have none mapped, and the app says so.
+- **Free hosting sleeps** after idle. See the deployment note on keeping it warm.
+- **Wishlist** is stored per browser, not per account.
 
-```bash
-# one-time
-python3 -m venv backend/.venv
-backend/.venv/bin/pip install -r backend/requirements.txt
-cd frontend && npm install && cd ..
+## Credits and data licences
 
-# run (two terminals, or use the scripts)
-./scripts/api.sh          # FastAPI  → http://localhost:8000
-./scripts/web.sh          # Vite     → http://localhost:5173
-```
-
-Open **http://localhost:5173**. The dev server proxies `/api` and `/ws` to port 8000.
-
-- API docs (Swagger): http://localhost:8000/api/docs
-- Health: http://localhost:8000/api/health
-
-**To watch a live match end to end:** open `/instant` in one tab and `/operator` in another,
-post a request, then bid from the operator tab.
-
-### Turning integrations on
-
-Copy the template and fill in only what you have — each key is independent.
-
-```bash
-cp .env.example .env
-./scripts/api.sh          # the API reads .env on startup
-```
-
-| Want | Set | Where to get it |
-|---|---|---|
-| Live weather | *(nothing — Open-Meteo is on by default)* | optional: `OPENWEATHER_API_KEY` from openweathermap.org |
-| PostgreSQL + PostGIS | `DATABASE_URL` | `docker compose up db`, then `postgresql://northern:northern@localhost:5432/northern_trails` |
-| Phone OTP sign-in | `FIREBASE_PROJECT_ID` + the `VITE_FIREBASE_*` keys | Firebase console → enable **Phone** auth |
-| Push notifications | `FCM_SERVICE_ACCOUNT_JSON` + `VITE_FIREBASE_VAPID_KEY` | Firebase console → Cloud Messaging |
-| Gemini phrasing | `GEMINI_API_KEY` | aistudio.google.com |
-| Real payments | `PAYMENTS_PROVIDER` + that gateway's credentials | JazzCash / Easypaisa merchant onboarding |
-
-`curl localhost:8000/api/health` confirms what actually switched on. Weather
-(Open-Meteo), hazards (GDACS), earthquakes (USGS), the PMD advisory and ride routing
-(OSRM) are all live with no key at all.
-
-**To see the conditions layer work:** open `/conditions` and press **Refresh now** in the
-Data sources panel.
-
----
-
-## Putting the whole thing online
-
-```bash
-./scripts/golive.sh
-```
-
-One command: starts the API if it is not running, opens a public Cloudflare
-tunnel to it, rebuilds the SPA against that URL and deploys to Firebase
-Hosting. The live site then has a real backend — bookings, payments, the
-grounded assistant and live ride matching all work.
-
-**Why a tunnel.** Firebase Hosting serves static files only; it cannot run
-FastAPI or WebSockets. Cloud Run can, but needs billing enabled on the GCP
-project. A Cloudflare quick tunnel needs no account and does support
-WebSockets, so it is the shortest path from "static site" to "working app".
-
-**What it costs you.** The tunnel lives only as long as the machine and the
-process do, and its hostname changes on every restart — hence the rebuild
-and redeploy each time. It is a demo mechanism, not hosting.
-
-**The permanent version** is `render.yaml`: push the repo, create a
-Blueprint on Render (free tier, WebSockets supported), then build once with
-`VITE_API_BASE` set to the Render URL and the address stops moving.
-
----
-
-## Deploying
-
-The Docker image builds the SPA and serves it from the same origin as the API, so there is no
-CORS or separate static host to configure.
-
-```bash
-docker compose up --build        # → http://localhost:8000
-```
-
-This brings up PostGIS alongside the app and points `DATABASE_URL` at it; tables and seed
-data are created on first boot. Every other integration stays optional — pass the keys you
-have through the environment.
-
-**Render** — push the repo, then *New → Blueprint* and point it at `render.yaml`. It
-provisions a free PostgreSQL instance and wires `DATABASE_URL` automatically; run
-`CREATE EXTENSION postgis;` once against it if the startup attempt lacks permission.
-Secrets are marked `sync: false`, so they are set in the dashboard and never committed.
-
-**Firebase Hosting + Cloud Run** — Firebase Hosting serves static files only and cannot
-run the API or WebSockets. Deploy the container to Cloud Run, build the SPA with
-`VITE_API_BASE` set to the Cloud Run URL, and host `frontend/dist` on Firebase. Point the
-WebSocket straight at Cloud Run rather than through a Hosting rewrite.
-
-**Railway** — `railway up` picks up `railway.json` and builds the same Dockerfile.
-
-Both platforms support WebSockets on their free tiers, which the matching flow requires.
-
----
-
-## What is still prototype
-
-Stated plainly, because the rest of this README claims a lot:
-
-- **NHA road status is seeded.** The scraper is written and tested against NHA-shaped
-  HTML, but the live site blocks servers with a 403. Weather, hazards, earthquakes, the
-  PMD advisory and ride routing are genuinely live.
-- **No real drivers.** Operator offers come from a labelled stand-in unless a real
-  operator app is connected. Ride pricing, distances, records and the matching protocol
-  are all real; the humans are not.
-- **In-flight trip requests are in-memory.** Completed bookings, payments, users, devices
-  and the whole conditions layer persist to PostgreSQL. The dispatcher's open requests do
-  not, so it runs single-process; Redis is the next step for multi-worker deployment.
-- **Payment credentials are not provisioned.** The JazzCash and Easypaisa signing,
-  redirect and callback-verification code is complete and unit-tested against known
-  vectors, but a real transaction needs merchant onboarding. The sandbox gateway runs the
-  identical flow offline.
-- **Traveler reports do not yet move `confidence`.** The field is stored and displayed;
-  nothing writes to it from user submissions.
-- **No operator-side onboarding.** Operators are seeded and verified by hand rather than
-  registering and uploading documents.
-
-## Stack
-
-React 18 · Vite · Tailwind CSS · Framer Motion · Firebase (Auth + FCM) ·
-FastAPI · WebSockets · SQLAlchemy 2 · PostgreSQL 16 + PostGIS 3.4 ·
-BeautifulSoup · Open-Meteo · GDACS · USGS · OSRM · Gemini ·
-JazzCash / Easypaisa · Docker
+- Destination photos: [Wikimedia Commons](https://commons.wikimedia.org) contributors under the
+  licence shown on each photo (mostly CC BY-SA / CC0), or [Unsplash](https://unsplash.com)
+  photographers when an Unsplash key is configured. Credits are shown on the photo.
+- Map data and restaurant listings: © [OpenStreetMap](https://www.openstreetmap.org/copyright)
+  contributors (ODbL); map tiles © OpenStreetMap.
+- Weather: [Open-Meteo](https://open-meteo.com) (CC BY 4.0) and OpenWeatherMap. Earthquakes:
+  [USGS](https://earthquake.usgs.gov). Hazards: [GDACS](https://www.gdacs.org). Advisories: PMD.
+  Routing: [OSRM](https://project-osrm.org).
