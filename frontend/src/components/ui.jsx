@@ -44,6 +44,26 @@ export const item = {
   show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.6, ease } },
 }
 
+/**
+ * Renders its children only once they come within a screen or so of the
+ * viewport. Below-the-fold sections then cost nothing on load, which is most
+ * of the work a mid-range phone does on the home page. The placeholder keeps
+ * roughly the section's height so the scrollbar does not jump.
+ */
+export function WhenNear({ children, minHeight = 480, margin = '400px 0px' }) {
+  const ref = useRef(null)
+  const [near, setNear] = useState(() => typeof IntersectionObserver === 'undefined')
+  useEffect(() => {
+    if (near) return undefined
+    const el = ref.current
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setNear(true); io.disconnect() } }, { rootMargin: margin })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [near, margin])
+  if (near) return children
+  return <div ref={ref} style={{ minHeight }} aria-hidden="true" />
+}
+
 /* ------------------------------------------------------------- headings */
 export function SectionTitle({ eyebrow, title, sub, right }) {
   const { t } = useTranslation()

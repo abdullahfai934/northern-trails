@@ -21,7 +21,11 @@ export function AuthProvider({ children }) {
   const [sheet, setSheet] = useState({ open: false, reason: '' })
   const pending = useRef(null)
 
-  useEffect(() => { setTokenProvider(() => fb.idToken()) }, [])
+  // Until the session restore below has started, calls go out anonymously
+  // (signed-in pages wait for `ready` anyway), so the first API request does
+  // not pull the Firebase SDK into the first paint.
+  const started = useRef(false)
+  useEffect(() => { setTokenProvider(() => (started.current ? fb.idToken() : '')) }, [])
 
   const loadProfile = useCallback(async () => {
     try {
@@ -39,14 +43,21 @@ export function AuthProvider({ children }) {
     if (!fb.configured) return undefined
     let unsub = () => {}
     let alive = true
-    fb.onUser(async (u) => {
-      if (!alive) return
-      setUser(u)
-      if (u) await loadProfile()
-      else setProfile(null)
-      setReady(true)
-    }).then((fn) => { if (typeof fn === 'function') unsub = fn })
-    return () => { alive = false; unsub() }
+    // Restoring a session loads the Firebase SDK, so wait until the first
+    // paint is done; it still runs within a second or two of load.
+    const idle = window.requestIdleCallback || ((f) => setTimeout(f, 300))
+    const cancel = window.cancelIdleCallback || clearTimeout
+    const handle = idle(() => {
+      started.current = true
+      fb.onUser(async (u) => {
+        if (!alive) return
+        setUser(u)
+        if (u) await loadProfile()
+        else setProfile(null)
+        setReady(true)
+      }).then((fn) => { if (typeof fn === 'function') { if (alive) unsub = fn; else fn() } })
+    }, { timeout: 2000 })
+    return () => { alive = false; cancel(handle); unsub() }
   }, [loadProfile])
 
   // After sign-in, finish what the user was doing before they were asked.

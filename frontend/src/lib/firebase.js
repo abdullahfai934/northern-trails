@@ -58,9 +58,12 @@ let authInstance = null
 
 export async function getAuthInstance() {
   if (authInstance) return authInstance
-  const [{ getAuth, connectAuthEmulator }, app] =
+  const [{ initializeAuth, indexedDBLocalPersistence, browserLocalPersistence, connectAuthEmulator }, app] =
     await Promise.all([import('firebase/auth'), getApp()])
-  authInstance = getAuth(app)
+  // Unlike getAuth(), this leaves out the popup/redirect resolver, which
+  // loads Google's sign-in iframe on every page view. Google sign-in passes
+  // the resolver itself, so the iframe only loads for people who use it.
+  authInstance = initializeAuth(app, { persistence: [indexedDBLocalPersistence, browserLocalPersistence] })
   if (emulatorHost) {
     // Point the SDK at the local emulator: no SMS is sent and no Firebase
     // billing or console setup is needed to exercise the full OTP flow.
@@ -118,11 +121,11 @@ export async function signInEmail(email, password) {
 }
 
 export async function signInGoogle() {
-  const { GoogleAuthProvider, signInWithPopup } = await import('firebase/auth')
+  const { GoogleAuthProvider, signInWithPopup, browserPopupRedirectResolver } = await import('firebase/auth')
   const auth = await getAuthInstance()
   const provider = new GoogleAuthProvider()
   provider.setCustomParameters({ prompt: 'select_account' })
-  return (await signInWithPopup(auth, provider)).user
+  return (await signInWithPopup(auth, provider, browserPopupRedirectResolver)).user
 }
 
 export async function resetPassword(email) {

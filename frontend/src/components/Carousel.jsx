@@ -22,6 +22,18 @@ export default function Carousel({ items, renderItem, speed = 32, itemClassName 
   const dragging = useRef(false)
   const dragDistance = useRef(0)
   const nudge = useRef(0)
+  const root = useRef(null)
+  const onScreen = useRef(false)
+
+  // Only drift while the row is on screen: an off-screen strip would keep
+  // the main thread busy every frame for nothing.
+  useEffect(() => {
+    const el = root.current
+    if (!el || typeof IntersectionObserver === 'undefined') { onScreen.current = true; return undefined }
+    const io = new IntersectionObserver(([e]) => { onScreen.current = e.isIntersecting }, { rootMargin: '120px 0px' })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
 
   // One copy's width, re-measured on resize and when images change layout.
   useLayoutEffect(() => {
@@ -47,7 +59,7 @@ export default function Carousel({ items, renderItem, speed = 32, itemClassName 
   }
 
   useAnimationFrame((_, delta) => {
-    if (!setWidth || dragging.current) return
+    if (!setWidth || dragging.current || !onScreen.current) return
     const dt = Math.min(delta, 64) / 1000
     let v = x.get()
     if (nudge.current) {
@@ -74,7 +86,7 @@ export default function Carousel({ items, renderItem, speed = 32, itemClassName 
   const copies = [0, 1, 2]
 
   return (
-    <div className="relative" role="region" aria-roledescription="carousel" aria-label={label}
+    <div ref={root} className="relative" role="region" aria-roledescription="carousel" aria-label={label}
       onMouseEnter={() => { paused.current = true }}
       onMouseLeave={() => { paused.current = false }}
       onFocusCapture={() => { paused.current = true }}

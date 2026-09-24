@@ -47,9 +47,20 @@ export function PhotoPlaceholder({ name, className = '', compact = false }) {
  * screen), then photos looked up by `query`. If an image fails to load the
  * next one is tried; when none are left the gradient placeholder shows.
  */
+/**
+ * Wikimedia thumbnails come in standard widths; offer a few so a phone
+ * downloads a 500 px image instead of the 1280 px one a desktop hero needs.
+ */
+const WIDTHS = [500, 960, 1280]
+function srcSetFor(url) {
+  if (!/wikimedia\.org\/.+\/\d+px-/.test(url)) return undefined
+  return WIDTHS.map((w) => `${url.replace(/\/\d+px-/, `/${w}px-`)} ${w}w`).join(', ')
+}
+
 export default function PlacePhoto({
   query, name, images = NONE, index = 0, className = '', imgClassName = '',
   eager = false, large = false, credit = false, count = 6, onPhotos,
+  sizes = large ? '100vw' : '(max-width: 640px) 92vw, 360px',
 }) {
   const { items, status } = usePhotos(query, count)
   const [failed, setFailed] = useState(() => new Set())
@@ -79,6 +90,8 @@ export default function PlacePhoto({
         <img
           key={src}
           src={src}
+          srcSet={srcSetFor(src)}
+          sizes={sizes}
           alt={photo.alt || name || ''}
           loading={eager ? 'eager' : 'lazy'}
           decoding="async"

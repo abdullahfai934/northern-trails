@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { Suspense, lazy, useEffect } from 'react'
 import { Route, Routes, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 
@@ -7,27 +7,59 @@ import { DataProvider } from './lib/store'
 import { AuthProvider } from './lib/auth'
 import { ThemeProvider } from './lib/theme'
 import { WishlistProvider } from './lib/wishlist'
-import { ToastHost } from './components/ui'
+import { Skeleton, ToastHost } from './components/ui'
 import { PackageActionsProvider } from './components/PackageActions'
 import ErrorBoundary from './components/ErrorBoundary'
 
 import Home from './pages/Home'
-import Explore from './pages/Explore'
-import Plan from './pages/Plan'
-import PackageDetail from './pages/PackageDetail'
-import Instant from './pages/Instant'
-import Conditions from './pages/Conditions'
-import Assistant from './pages/Assistant'
-import Operator from './pages/Operator'
-import PayReturn from './pages/PayReturn'
-import Wishlist from './pages/Wishlist'
-import Admin from './pages/Admin'
-import Profile from './pages/Profile'
-import Developers from './pages/Developers'
-import MapPage from './pages/MapPage'
-import Sos from './pages/Sos'
-import Budget from './pages/Budget'
 import { SignInSheet } from './components/SignIn'
+
+/* Home ships in the main bundle; every other page is its own chunk, fetched
+   when it is first opened (and prefetched once the browser is idle). */
+const PAGES = {
+  Explore: () => import('./pages/Explore'),
+  Plan: () => import('./pages/Plan'),
+  PackageDetail: () => import('./pages/PackageDetail'),
+  Instant: () => import('./pages/Instant'),
+  Conditions: () => import('./pages/Conditions'),
+  Assistant: () => import('./pages/Assistant'),
+  Operator: () => import('./pages/Operator'),
+  PayReturn: () => import('./pages/PayReturn'),
+  Wishlist: () => import('./pages/Wishlist'),
+  Admin: () => import('./pages/Admin'),
+  Profile: () => import('./pages/Profile'),
+  Developers: () => import('./pages/Developers'),
+  MapPage: () => import('./pages/MapPage'),
+  Sos: () => import('./pages/Sos'),
+  Budget: () => import('./pages/Budget'),
+}
+const Explore = lazy(PAGES.Explore)
+const Plan = lazy(PAGES.Plan)
+const PackageDetail = lazy(PAGES.PackageDetail)
+const Instant = lazy(PAGES.Instant)
+const Conditions = lazy(PAGES.Conditions)
+const Assistant = lazy(PAGES.Assistant)
+const Operator = lazy(PAGES.Operator)
+const PayReturn = lazy(PAGES.PayReturn)
+const Wishlist = lazy(PAGES.Wishlist)
+const Admin = lazy(PAGES.Admin)
+const Profile = lazy(PAGES.Profile)
+const Developers = lazy(PAGES.Developers)
+const MapPage = lazy(PAGES.MapPage)
+const Sos = lazy(PAGES.Sos)
+const Budget = lazy(PAGES.Budget)
+
+function prefetchPages() {
+  const run = () => Object.values(PAGES).forEach((load) => load().catch(() => {}))
+  // After the first interaction, or a quiet moment well after load, so it
+  // never competes with the first paint.
+  const start = () => {
+    ['pointerdown', 'keydown', 'scroll'].forEach((e) => window.removeEventListener(e, start))
+    ;(window.requestIdleCallback || ((f) => setTimeout(f, 200)))(run)
+  }
+  ;['pointerdown', 'keydown', 'scroll'].forEach((e) => window.addEventListener(e, start, { once: true, passive: true }))
+  setTimeout(start, 12000)
+}
 import { ServerWaking } from './components/ServerWaking'
 
 /** Pages fade and rise into place, and fade out upward — slow, ease-out, never bouncy. */
@@ -40,8 +72,21 @@ const pageVariants = {
 function Page({ children }) {
   return (
     <motion.main variants={pageVariants} initial="initial" animate="enter" exit="exit">
-      {children}
+      <Suspense fallback={<PageLoading />}>{children}</Suspense>
     </motion.main>
+  )
+}
+
+/** Shown for the moment a page's chunk is on its way. */
+function PageLoading() {
+  return (
+    <div className="mx-auto max-w-7xl px-5 py-24 sm:px-8" aria-busy="true">
+      <Skeleton className="h-10 w-1/2" />
+      <Skeleton className="mt-4 h-5 w-1/3" />
+      <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {[0, 1, 2].map((i) => <Skeleton key={i} className="h-56" />)}
+      </div>
+    </div>
   )
 }
 
@@ -53,6 +98,7 @@ function ScrollToTop() {
 
 export default function App() {
   const location = useLocation()
+  useEffect(prefetchPages, [])
   return (
     <ErrorBoundary>
     <ThemeProvider>

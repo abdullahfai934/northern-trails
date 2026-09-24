@@ -14,7 +14,7 @@ import { SafetyGauge } from '../components/charts'
 import PackageCard from '../components/PackageCard'
 import PlacePhoto from '../components/PlacePhoto'
 import Carousel from '../components/Carousel'
-import { CountUp, ErrorState, Marquee, Reveal, SectionTitle, Skeleton, Stagger, StatusPill, ease, item } from '../components/ui'
+import { CountUp, ErrorState, Marquee, Reveal, SectionTitle, Skeleton, Stagger, StatusPill, WhenNear, ease, item } from '../components/ui'
 
 const SLIDES = [
   { scene: 'hunza',   title: 'Hunza',         query: 'Hunza Valley',               sub: 'Karimabad · Attabad · Passu Cones' },
@@ -135,8 +135,10 @@ function Hero({ alerts = [] }) {
               <button key={s.scene} onClick={() => setI(idx)} role="tab" aria-selected={idx === i} aria-label={s.title}
                 className={`relative h-1 overflow-hidden rounded-full transition-all duration-700 ${idx === i ? 'w-10 bg-white/20' : 'w-3 bg-white/20 hover:bg-white/40'}`}>
                 {idx === i && (
-                  <motion.span key={`${i}-${paused}`} className="absolute inset-y-0 start-0 rounded-full bg-glacier-300"
-                    initial={{ width: paused || reduce ? '100%' : '0%' }} animate={{ width: '100%' }}
+                  // scaleX, not width: the bar fills on the compositor, with
+                  // no layout work every frame. Mirrored in right-to-left.
+                  <motion.span key={`${i}-${paused}`} className="absolute inset-0 origin-left rounded-full bg-glacier-300 rtl:origin-right"
+                    initial={{ scaleX: paused || reduce ? 1 : 0 }} animate={{ scaleX: 1 }}
                     transition={{ duration: paused || reduce ? 0 : SLIDE_MS / 1000, ease: 'linear' }} />
                 )}
               </button>
@@ -466,15 +468,20 @@ function Stats({ operators = [], destinations = [], packages = [] }) {
 export default function Home() {
   const d = useData()
 
+  // The hero needs no server data, so it paints at once; only the sections
+  // below it wait for the API (which may be waking from a cold start).
   if (!d.ready) {
     return (
-      <div className="mx-auto max-w-7xl px-5 py-32 sm:px-8">
-        <Skeleton className="h-16 w-2/3" />
-        <Skeleton className="mt-4 h-6 w-1/2" />
-        <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-64" />)}
+      <>
+        <Hero alerts={[]} />
+        <div className="mx-auto max-w-7xl px-5 py-20 sm:px-8">
+          <Skeleton className="h-10 w-1/2" />
+          <Skeleton className="mt-4 h-5 w-1/3" />
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {[0, 1, 2].map((i) => <Skeleton key={i} className="h-64" />)}
+          </div>
         </div>
-      </div>
+      </>
     )
   }
 
@@ -489,12 +496,13 @@ export default function Home() {
       <div className="border-y border-white/[.06] bg-ink-900/40">
         <div className="mx-auto max-w-7xl px-5 sm:px-8"><Marquee items={ticker} /></div>
       </div>
-      <Flows />
-      <ConditionsStrip routes={d.routes} weather={d.weather} />
-      <BestThisWeek />
-      <Featured packages={d.packages} />
-      <AssistantTeaser suggestions={d.suggestions} />
-      <Stats operators={d.operators} destinations={d.destinations} packages={d.packages} />
+      {/* Below the fold: each section mounts as the visitor scrolls near it. */}
+      <WhenNear minHeight={720}><Flows /></WhenNear>
+      <WhenNear minHeight={640}><ConditionsStrip routes={d.routes} weather={d.weather} /></WhenNear>
+      <WhenNear minHeight={680}><BestThisWeek /></WhenNear>
+      <WhenNear minHeight={700}><Featured packages={d.packages} /></WhenNear>
+      <WhenNear minHeight={720}><AssistantTeaser suggestions={d.suggestions} /></WhenNear>
+      <WhenNear minHeight={240}><Stats operators={d.operators} destinations={d.destinations} packages={d.packages} /></WhenNear>
     </>
   )
 }
