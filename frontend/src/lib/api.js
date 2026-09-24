@@ -42,8 +42,75 @@ async function errorFrom(res) {
   return new ApiError(res.statusText || 'Request failed', res.status)
 }
 
-async function req(path, opts = {}) {
+/*
+ * Cold starts. A free host puts the API to sleep when nobody uses it, and the
+ * first request then fails (a gateway 502/503/504, a sleeping-host HTML page
+ * or a network error) or hangs while the server boots. Instead of showing an
+ * error, requests that could not have reached the app wait for /api/health
+ * to answer and are then sent again. Subscribers (the "waking up" banner)
+ * hear 'waking' and 'ready'.
+ */
+const WAKE_LIMIT_MS = 150000
+const listeners = new Set()
+let serverState = 'ready'
+let waking = null
+
+export function onServerState(fn) {
+  listeners.add(fn)
+  fn(serverState)
+  return () => listeners.delete(fn)
+}
+
+function setServerState(s) {
+  if (s === serverState) return
+  serverState = s
+  listeners.forEach((fn) => fn(s))
+}
+
+function sleep(ms) { return new Promise((r) => setTimeout(r, ms)) }
+
+function wakeServer() {
+  if (waking) return waking
+  setServerState('waking')
+  waking = (async () => {
+    const t0 = Date.now()
+    while (Date.now() - t0 < WAKE_LIMIT_MS) {
+      try {
+        const r = await fetch(BASE + '/api/health', { cache: 'no-store' })
+        if (r.ok && (r.headers.get('content-type') || '').includes('json')) {
+          setServerState('ready')
+          return true
+        }
+      } catch { /* still asleep */ }
+      await sleep(3000)
+    }
+    setServerState('down')
+    return false
+  })().finally(() => { waking = null })
+  return waking
+}
+
+/** A response from the host's gateway rather than from the API itself. */
+function asleep(res) {
+  // The API always answers in JSON (its own 503s included); gateways don't.
+  if ((res.headers.get('content-type') || '').includes('json')) return false
+  return res.ok || [502, 503, 504].includes(res.status)
+}
+
+async function req(path, opts = {}, woke = false) {
+  if (waking) await waking
+  try {
+    return await send(path, opts)
+  } catch (e) {
+    if (woke || !e.wake) throw e.wake ? e.error : e
+    if (!(await wakeServer())) throw e.error
+    return req(path, opts, true)
+  }
+}
+
+async function send(path, opts) {
   const { timeout = 30000, headers: extra, body, ...rest } = opts
+  const safe = !rest.method || rest.method === 'GET'
   const isForm = typeof FormData !== 'undefined' && body instanceof FormData
   const headers = { ...(isForm ? {} : { 'Content-Type': 'application/json' }), ...(extra || {}) }
   try {
@@ -62,11 +129,18 @@ async function req(path, opts = {}) {
       signal: ctrl.signal,
     })
   } catch (e) {
-    throw new ApiError(e?.name === 'AbortError'
+    const timedOut = e?.name === 'AbortError'
+    const error = new ApiError(timedOut
       ? 'The server took too long to respond. Please try again.'
       : 'Could not reach the server. Check your connection and try again.')
+    // A network error never reached the app, so any request may be resent;
+    // a timeout might have, so only reads are.
+    throw { wake: navigator.onLine !== false && (!timedOut || safe), error }
   } finally {
     clearTimeout(timer)
+  }
+  if (asleep(res)) {
+    throw { wake: true, error: new ApiError('The server is starting up. Please try again in a minute.', res.status) }
   }
   if (!res.ok) throw await errorFrom(res)
   return res.json()

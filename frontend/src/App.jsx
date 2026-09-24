@@ -28,6 +28,7 @@ import MapPage from './pages/MapPage'
 import Sos from './pages/Sos'
 import Budget from './pages/Budget'
 import { SignInSheet } from './components/SignIn'
+import { ServerWaking } from './components/ServerWaking'
 
 /** Pages fade and rise into place, and fade out upward — slow, ease-out, never bouncy. */
 const pageVariants = {
@@ -89,6 +90,7 @@ export default function App() {
         </div>
         <BottomTabs />
         <SignInSheet />
+        <ServerWaking />
       </PackageActionsProvider>
       </ToastHost>
       </WishlistProvider>

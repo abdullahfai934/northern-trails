@@ -8,7 +8,7 @@ RUN npm run build
 
 # ---- stage 2: API + built SPA -----------------------------------------
 FROM python:3.12-slim
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 NT_CACHE_DIR=/tmp/nt-cache
 WORKDIR /app
 
 COPY backend/requirements.txt ./backend/requirements.txt

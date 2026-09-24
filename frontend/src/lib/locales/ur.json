@@ -363,5 +363,10 @@
  "vehicle": "گاڑی",
  "vehicles": "گاڑیاں",
  "verified": "تصدیق شدہ",
- "verify": "تصدیق کریں"
+ "verify": "تصدیق کریں",
+ "The server is not answering": "سرور جواب نہیں دے رہا",
+ "Please refresh the page in a minute.": "براہِ کرم ایک منٹ بعد صفحہ دوبارہ لوڈ کریں۔",
+ "Refresh": "دوبارہ لوڈ کریں",
+ "Waking up the server…": "سرور کو جگایا جا رہا ہے…",
+ "It sleeps when nobody is using it. The first visit can take up to a minute; your page will load by itself.": "جب کوئی استعمال نہ کر رہا ہو تو سرور سو جاتا ہے۔ پہلی بار کھلنے میں ایک منٹ تک لگ سکتا ہے؛ صفحہ خود بخود لوڈ ہو جائے گا۔"
 }
