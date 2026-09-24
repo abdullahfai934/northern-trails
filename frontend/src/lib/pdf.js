@@ -45,7 +45,7 @@ export async function downloadPlanPdf(plan) {
 
   for (const d of plan.days || []) {
     ensure(60)
-    text(`Day ${d.day} — ${d.title}`, { size: 12.5, bold: true, color: [30, 110, 107], gap: 5 })
+    text(`Day ${d.day}. ${d.title}`, { size: 12.5, bold: true, color: [30, 110, 107], gap: 5 })
     text(d.location, { size: 9.5, color: [110, 116, 128] })
     for (const a of d.activities || []) text('• ' + a, { size: 10.5 })
     if (d.restaurant) text(`Eat: ${d.restaurant.name} (${d.restaurant.cuisine}, ${d.restaurant.distance_km} km)`, { size: 10, color: [90, 96, 108] })

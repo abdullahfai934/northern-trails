@@ -139,9 +139,9 @@ export async function fetchQuakes() {
       id: `usgs-${f.id}`,
       severity: mag >= 5.5 ? 'high' : mag >= 4.5 ? 'medium' : 'low',
       kind: 'Earthquake',
-      title: `M${mag} earthquake — ${p.place || 'Northern Pakistan'}`,
+      title: `M${mag} earthquake near ${p.place || 'Northern Pakistan'}`,
       body: `Magnitude ${mag}. Recent seismic activity raises rockfall and landslide `
-          + 'risk on nearby mountain roads — check road status before travelling.',
+          + 'risk on nearby mountain roads, so check road status before travelling.',
       routes: [],
       source: 'USGS Earthquake Hazards Program',
       source_url: p.url || '',

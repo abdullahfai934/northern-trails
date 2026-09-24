@@ -26,7 +26,7 @@ export const usePackageActions = () => useContext(Ctx)
 
 export function sharePackage(pkg, toast) {
   const url = `${window.location.origin}/explore/${pkg.id}`
-  const text = `${pkg.title} — ${pkg.days} days, ${pkr(pkg.price_pkr)} per person`
+  const text = `${pkg.title}, ${pkg.days} days, ${pkr(pkg.price_pkr)} per person`
   if (navigator.share) {
     return navigator.share({ title: pkg.title, text, url }).catch((e) => {
       if (e?.name !== 'AbortError') toast?.('Could not open the share sheet', 'bad')

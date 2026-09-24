@@ -14,7 +14,7 @@ import { SafetyGauge } from '../components/charts'
 import PackageCard from '../components/PackageCard'
 import PlacePhoto from '../components/PlacePhoto'
 import Carousel from '../components/Carousel'
-import { WeatherIcon } from '../components/motion'
+import { Tilt, WeatherIcon, useDir } from '../components/motion'
 import { CountUp, ErrorState, Marquee, Reveal, SectionTitle, Skeleton, Stagger, StatusPill, WhenNear, ease, item } from '../components/ui'
 
 const SLIDES = [
@@ -210,7 +210,7 @@ function Hero({ alerts = [] }) {
           transition={{ duration: 0.8, delay: 1.05, ease }}
           className="mt-6 max-w-xl text-[16px] leading-relaxed text-frost-300 sm:text-[17px]"
         >
-          {t('Compare multi-day tours from tourism-department-verified operators, or request a jeep, guide or transfer and get matched in real time — every answer grounded in live road status, weather and permit data.')}
+          {t('Compare multi-day tours from tourism-department-verified operators, or request a jeep, guide or transfer and get matched in real time. Every answer is grounded in live road status, weather and permit data.')}
         </motion.p>
 
         <motion.div
@@ -275,7 +275,7 @@ const FLOWS = [
     icon: Compass, tone: 'glacier',
     kicker: 'Flow one · planned',
     title: 'Browse & compare packages',
-    body: 'Filter 5-day Hunza–Skardu circuits, Deosai camping or a K2 trek by price, duration, pickup point and destination. Every listing carries a verified operator behind it.',
+    body: 'Filter 5-day Hunza and Skardu circuits, Deosai camping or a K2 trek by price, duration, pickup point and destination. Every listing carries a verified operator behind it.',
     points: ['Transparent PKR pricing, inclusions and exclusions', 'Day-by-day itinerary with the routes it touches', 'Condition warnings surfaced before you pay'],
     cta: ['Explore packages', '/explore'],
   },
@@ -299,8 +299,8 @@ function Flows() {
       />
       <Stagger className="grid gap-5 lg:grid-cols-2">
         {FLOWS.map((f) => (
-          <motion.div key={f.title} variants={item}
-            className="glass group relative overflow-hidden rounded-3xl p-7 transition-colors hover:border-white/15">
+          <Tilt key={f.title} variants={item} max={4}
+            className="glass group overflow-hidden rounded-3xl p-7 transition-colors hover:border-white/15">
             <div className={`absolute -right-20 -top-20 h-56 w-56 rounded-full blur-3xl transition-opacity duration-700
               ${f.tone === 'glacier' ? 'bg-glacier-400/10' : 'bg-amberz-400/10'} group-hover:opacity-160`} />
             <div className={`mb-5 grid h-11 w-11 place-items-center rounded-xl
@@ -321,7 +321,7 @@ function Flows() {
             <Link to={f.cta[1]} className="mt-7 inline-flex items-center gap-2 text-[13px] font-bold text-frost-50 transition-colors hover:text-glacier-300">
               {f.cta[0]} <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
             </Link>
-          </motion.div>
+          </Tilt>
         ))}
       </Stagger>
     </section>
@@ -335,14 +335,14 @@ function ConditionsStrip({ routes = [], weather = [] }) {
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <SectionTitle
           eyebrow="Live conditions layer"
-          title="Roads, weather and permits — tracked per route."
-          sub="Live weather, hazard and seismic feeds fused per route, then attached to every trip that touches it — each record tagged with where it came from and when."
+          title="Roads, weather and permits, tracked per route."
+          sub="Live weather, hazard and seismic feeds fused per route, then attached to every trip that touches it. Each record is tagged with where it came from and when."
           right={<Link to="/conditions" className="btn-ghost !py-2.5 !text-[13px]"><Radio className="h-3.5 w-3.5" /> All routes</Link>}
         />
 
         <Stagger className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {routes.slice(0, 3).map((r) => (
-            <motion.div key={r.id} variants={item} className="glass rounded-2xl p-5">
+            <Tilt key={r.id} variants={item} className="glass overflow-hidden rounded-2xl p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-2 text-[13px] font-bold text-frost-50">
                   <RouteIcon className="h-4 w-4 text-frost-400" />
@@ -366,7 +366,7 @@ function ConditionsStrip({ routes = [], weather = [] }) {
               <div className="mt-1.5 text-[10px] uppercase tracking-wider text-frost-400">
                 confidence {Math.round(r.confidence * 100)}% · {r.traveler_reports} traveler reports
               </div>
-            </motion.div>
+            </Tilt>
           ))}
         </Stagger>
 
@@ -409,14 +409,14 @@ function BestThisWeek() {
   return (
     <section className="mx-auto max-w-7xl px-5 py-20 sm:px-8">
       <SectionTitle eyebrow={t('This week')} title={t('Best places to visit this week.')}
-        sub={t('Ranked from the live forecast, road status, recent earthquakes and the season — refreshed as conditions change.')}
+        sub={t('Ranked from the live forecast, road status, recent earthquakes and the season, refreshed as conditions change.')}
         right={<Link to="/map" className="btn-ghost !py-2.5 !text-[13px]">{t('Open the map')} <ArrowRight className="h-3.5 w-3.5" /></Link>} />
       {state.status === 'loading' && <div className="grid gap-5 md:grid-cols-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-[360px] rounded-2xl" />)}</div>}
       {state.status === 'error' && <ErrorState title={t('Recommendations are loading')} message={state.error} onRetry={load} />}
       {state.status === 'ok' && (
         <Stagger className="grid gap-5 md:grid-cols-3" gap={0.16}>
           {state.items.map((r, k) => (
-            <motion.div key={r.destination.id} variants={flipIn} whileHover={{ y: -6 }} transition={{ duration: 0.5, ease }}
+            <Tilt key={r.destination.id} variants={flipIn} whileHover={{ y: -6 }} transition={{ duration: 0.5, ease }}
               style={{ transformPerspective: 1100, transformOrigin: '50% 0%' }}
               className="glass group overflow-hidden rounded-2xl transition-shadow duration-500 hover:shadow-glow">
               <div className="relative h-40 overflow-hidden">
@@ -443,7 +443,7 @@ function BestThisWeek() {
                   {r.packages.length} {t(r.packages.length === 1 ? 'package' : 'packages')} →
                 </Link>
               </div>
-            </motion.div>
+            </Tilt>
           ))}
         </Stagger>
       )}
@@ -494,7 +494,7 @@ function AssistantTeaser({ suggestions = [] }) {
               <span className="text-[11px] font-bold uppercase tracking-[.22em] text-glacier-300">Grounded AI assistant</span>
             </div>
             <h2 className="text-3xl font-extrabold leading-tight tracking-tight text-frost-50 sm:text-[2.5rem]">
-              It answers from live records — or admits it doesn't know.
+              It answers from live records, or admits it doesn't know.
             </h2>
             <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-frost-300">
               A retrieval pipeline packs the current road status, weather, permits and verified
@@ -509,7 +509,7 @@ function AssistantTeaser({ suggestions = [] }) {
             <Link to="/assistant" className="btn-primary mt-8"><Sparkles className="h-4 w-4" /> Ask the assistant</Link>
           </div>
 
-          <div className="glass-strong rounded-2xl p-5">
+          <TurnIn className="glass-strong rounded-2xl p-5">
             <div className="flex items-center gap-2 border-b border-white/[.07] pb-3">
               <MessageSquareText className="h-4 w-4 text-glacier-300" />
               <span className="text-[12px] font-bold text-frost-100">Live conditions assistant</span>
@@ -527,7 +527,7 @@ function AssistantTeaser({ suggestions = [] }) {
               </AnimatePresence>
               <div className="max-w-[92%] rounded-2xl rounded-bl-sm bg-white/[.05] px-4 py-3 text-[13px] leading-relaxed text-frost-200">
                 <span className="font-semibold text-frost-50">Gilgit → Skardu is open but needs care.</span>{' '}
-                Single-lane diversion at Thowar, convoy released every 30 min from 06:00–19:00.
+                Single-lane diversion at Thowar, convoy released every 30 min from 06:00 to 19:00.
                 <div className="mt-2.5 flex flex-wrap gap-1.5">
                   {['skardu-road', 'alert-thowar', 'wx-skardu'].map((c) => (
                     <span key={c} className="rounded-md bg-ink-950/60 px-2 py-0.5 font-mono text-[10px] text-glacier-300">{c}</span>
@@ -535,16 +535,75 @@ function AssistantTeaser({ suggestions = [] }) {
                 </div>
               </div>
             </div>
-          </div>
+          </TurnIn>
         </div>
       </div>
     </section>
   )
 }
 
+/**
+ * A panel that starts turned away (rotated in 3D) and swings round to face
+ * the reader as it scrolls towards the middle of the screen.
+ */
+function TurnIn({ className, children }) {
+  const ref = useRef(null)
+  const dir = useDir()
+  const reduce = useReducedMotion()
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'center 55%'] })
+  const p = useSpring(scrollYProgress, { stiffness: 70, damping: 22, restDelta: 0.001 })
+  const rotateY = useTransform(p, [0, 1], [-18 * dir, 0])
+  const rotateX = useTransform(p, [0, 1], [8, 0])
+  const z = useTransform(p, [0, 1], [-80, 0])
+  return (
+    <motion.div ref={ref} className={className}
+      style={reduce ? undefined : { rotateY, rotateX, z, transformPerspective: 1200 }}>
+      {children}
+    </motion.div>
+  )
+}
+
 /* ---------------------------------------------------------------- stats */
+/*
+ * Above the footer: a small 3D stage. Five mountain ridges sit at different
+ * depths inside one perspective group; scrolling tips the whole range up
+ * towards you and, on desktop, it turns a little with the mouse. The stats
+ * float in front of it and flip up into place. Transforms only.
+ */
+function ridgePath(seed, peaks, top, jag) {
+  // Sharp summits joined by soft, curved saddles, so it reads as a range
+  // rather than a zigzag.
+  let v = seed
+  const rnd = () => { v = (v * 9301 + 49297) % 233280; return v / 233280 }
+  const step = 1200 / peaks
+  let d = `M0 300 L0 ${(top + jag).toFixed(0)}`
+  for (let k = 0; k <= peaks; k++) {
+    const px = k * step + (rnd() - 0.5) * step * 0.35
+    const py = top + rnd() * jag * 0.45
+    const sx = px + step * (0.4 + rnd() * 0.2)
+    const sy = top + jag * (0.75 + rnd() * 0.25)
+    d += ` L${px.toFixed(0)} ${py.toFixed(0)} Q${(px + (sx - px) * 0.55).toFixed(0)} ${(py + (sy - py) * 0.9).toFixed(0)} ${sx.toFixed(0)} ${sy.toFixed(0)}`
+  }
+  return d + ' L1200 300 Z'
+}
+
+const RIDGES = [
+  { z: -460, y: -60, d: ridgePath(7, 3, 20, 150), fill: 'rgb(var(--glacier-300) / .10)' },
+  { z: -330, y: -34, d: ridgePath(19, 4, 55, 140), fill: 'rgb(var(--glacier-400) / .15)' },
+  { z: -210, y: -14, d: ridgePath(31, 5, 95, 120), fill: 'rgb(var(--ink-800) / .9)' },
+  { z: -100, y: 0, d: ridgePath(43, 6, 140, 100), fill: 'rgb(var(--ink-850) / .96)' },
+  { z: 0, y: 12, d: ridgePath(59, 7, 190, 80), fill: 'rgb(var(--ink-950))' },
+]
+
+const statIn = {
+  hidden: { opacity: 0, rotateX: -70, y: 30 },
+  show: { opacity: 1, rotateX: 0, y: 0, transition: { duration: 0.9, ease } },
+}
+
 function Stats({ operators = [], destinations = [], packages = [] }) {
   const t = useT()
+  const ref = useRef(null)
+  const reduce = useReducedMotion()
   const trips = operators.reduce((sum, o) => sum + (o.trips || 0), 0)
   const cells = [
     { icon: Compass, value: packages.length, label: t('Tours listed'), suffix: '' },
@@ -552,19 +611,48 @@ function Stats({ operators = [], destinations = [], packages = [] }) {
     { icon: RouteIcon, value: destinations.length, label: t('Destinations'), suffix: '' },
     { icon: Gauge, value: trips, label: t('Trips run by our operators'), suffix: '+' },
   ]
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] })
+  const tip = useSpring(scrollYProgress, { stiffness: 60, damping: 20, restDelta: 0.001 })
+  const rotateX = useTransform(tip, [0, 0.55, 1], [38, 8, -4])
+  const rise = useTransform(tip, [0, 0.55], [90, 0])
+  const turn = useSpring(0, { stiffness: 40, damping: 16 })
+  const rotateY = useTransform(turn, (v) => v * 7)
+  const onMove = (e) => {
+    if (reduce || e.pointerType !== 'mouse') return
+    const r = e.currentTarget.getBoundingClientRect()
+    turn.set((e.clientX - r.left) / r.width - 0.5)
+  }
+
   return (
-    <section className="border-y border-white/[.06] bg-ink-900/30">
-      <div className="mx-auto grid max-w-7xl grid-cols-2 gap-px px-5 sm:px-8 lg:grid-cols-4">
-        {cells.map((c, i) => (
-          <Reveal key={c.label} delay={i * 0.07} className="px-2 py-10 text-center">
+    <section ref={ref} onPointerMove={onMove} onPointerLeave={() => turn.set(0)}
+      className="relative overflow-hidden border-y border-white/[.06] bg-ink-900/30" style={{ perspective: 1000 }}>
+      <motion.div aria-hidden="true" className="absolute inset-x-[-12%] bottom-0 h-[92%]"
+        style={reduce ? undefined : { rotateX, rotateY, y: rise, transformStyle: 'preserve-3d', transformOrigin: '50% 100%' }}>
+        {/* a low sun behind the farthest range */}
+        <div className="absolute left-[62%] top-[6%] h-40 w-40 rounded-full sm:h-56 sm:w-56"
+             style={{ transform: 'translateZ(-560px) scale(1.56)', background: 'radial-gradient(closest-side, rgb(var(--amberz-300) / .30), rgb(var(--amberz-400) / .10) 60%, transparent)' }} />
+        {RIDGES.map((r, k) => (
+          <svg key={k} viewBox="0 0 1200 300" preserveAspectRatio="none" className="absolute inset-0 h-full w-full"
+               style={{ transform: `translateZ(${r.z}px) translateY(${r.y}px) scale(${1 - r.z / 1000})` }}>
+            <path d={r.d} style={{ fill: r.fill }} />
+          </svg>
+        ))}
+      </motion.div>
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-ink-950 to-transparent" aria-hidden="true" />
+
+      <Stagger className="relative mx-auto grid max-w-7xl grid-cols-2 gap-3 px-5 pb-44 pt-16 sm:gap-4 sm:px-8 sm:pb-56 sm:pt-24 lg:grid-cols-4" gap={0.12}>
+        {cells.map((c) => (
+          <Tilt key={c.label} variants={statIn} max={6}
+            style={{ transformPerspective: 900, transformOrigin: '50% 100%' }}
+            className="glass overflow-hidden rounded-2xl px-2 py-8 text-center">
             <c.icon className="mx-auto mb-3 h-5 w-5 text-glacier-300" strokeWidth={1.8} />
             <div className="font-mono text-3xl font-bold text-frost-50 sm:text-4xl">
               <CountUp to={c.value} suffix={c.suffix} />
             </div>
             <div className="mt-1.5 text-[11px] font-semibold uppercase tracking-[.16em] text-frost-400">{c.label}</div>
-          </Reveal>
+          </Tilt>
         ))}
-      </div>
+      </Stagger>
     </section>
   )
 }
@@ -591,7 +679,7 @@ export default function Home() {
   }
 
   const ticker = [
-    ...d.routes.map((r) => `${r.name} — ${STATUS[r.status]?.label}`),
+    ...d.routes.map((r) => `${r.name}, ${STATUS[r.status]?.label}`),
     ...d.weather.map((w) => `${w.city} ${w.temp_c}°C ${w.condition}`),
   ]
 
@@ -609,7 +697,7 @@ export default function Home() {
       <WhenNear minHeight={680}><BestThisWeek /></WhenNear>
       <WhenNear minHeight={700}><Featured packages={d.packages} /></WhenNear>
       <WhenNear minHeight={720}><AssistantTeaser suggestions={d.suggestions} /></WhenNear>
-      <WhenNear minHeight={240}><Stats operators={d.operators} destinations={d.destinations} packages={d.packages} /></WhenNear>
+      <WhenNear minHeight={420}><Stats operators={d.operators} destinations={d.destinations} packages={d.packages} /></WhenNear>
     </>
   )
 }

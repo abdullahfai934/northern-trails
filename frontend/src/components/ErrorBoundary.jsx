@@ -31,7 +31,7 @@ export default class ErrorBoundary extends React.Component {
         </div>
         <h1 className="font-display text-xl text-frost-50">Something broke on this page</h1>
         <p className="mt-2 text-sm text-frost-300">
-          The rest of the app still works — try reloading, or head back to the home page.
+          The rest of the app still works. Try reloading, or head back to the home page.
         </p>
         <pre className="mt-5 overflow-x-auto rounded-xl border border-ink-700 bg-ink-900 p-3 text-left font-mono text-[11px] leading-relaxed text-rose-300">
           {String(this.state.error?.message || this.state.error)}

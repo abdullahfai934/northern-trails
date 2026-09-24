@@ -271,3 +271,13 @@ body::after {
 .nt-shimmer-copy { animation: nt-shimmer-out 1.5s cubic-bezier(.45,0,.25,1) 1.9s both; }
 [dir='rtl'] .nt-shimmer-window { animation-name: nt-shimmer-out; }
 [dir='rtl'] .nt-shimmer-copy { animation-name: nt-shimmer-in; }
+
+/* Footer columns fold down into place along their top edge, one by one. */
+.nt-fold { perspective: 1100px; }
+.nt-fold > * { opacity: 0; transform: rotateX(-48deg) translateY(18px); transform-origin: 50% 0;
+               transition: transform .9s cubic-bezier(.22,1,.36,1), opacity .7s ease-out; }
+.nt-fold.nt-fold-open > * { opacity: 1; transform: none; }
+.nt-fold > :nth-child(2) { transition-delay: .09s; }
+.nt-fold > :nth-child(3) { transition-delay: .18s; }
+.nt-fold > :nth-child(4) { transition-delay: .27s; }
+.nt-fold > :nth-child(5) { transition-delay: .36s; }

@@ -63,13 +63,13 @@ export default function Instant() {
         setOffers((o) => [...o, m.offer])
         setFeed((f) => [{
           id: Math.random(),
-          text: `${m.offer.operator.name}${m.offer.simulated ? ' (stand-in)' : ''} responded — `
+          text: `${m.offer.operator.name}${m.offer.simulated ? ' (stand-in)' : ''} offered `
                 + `${pkr(m.offer.price_pkr)}, ETA ${m.offer.eta_min} min`,
           tone: 'good',
         }, ...f])
       }
       if (m.type === 'offer.declined') {
-        setFeed((f) => [{ id: Math.random(), text: `${m.operator.name} declined${m.reason ? ' — ' + m.reason : ''}`, tone: 'bad' }, ...f])
+        setFeed((f) => [{ id: Math.random(), text: `${m.operator.name} declined${m.reason ? ' (' + m.reason + ')' : ''}`, tone: 'bad' }, ...f])
       }
       if (m.type === 'trip.confirmed') {
         setTrip(m.request); setPhase('confirmed'); setStage(null)
@@ -398,8 +398,8 @@ export default function Instant() {
               <AnimatePresence initial={false}>
                 {feed.length === 0 && (
                   <p className="text-[12.5px] leading-relaxed text-frost-400">
-                    Post a request and every dispatch event — operator notified, offer received,
-                    declined, trip stage — streams here over the same WebSocket the operator app uses.
+                    Post a request and every dispatch event (operator notified, offer received,
+                    declined, trip stage) streams here over the same WebSocket the operator app uses.
                   </p>
                 )}
                 {feed.map((f) => (
@@ -533,7 +533,7 @@ function FarePanel({ quote, quoting, error }) {
       {quote && (
         <p className="mt-2 text-[11px] leading-relaxed text-frost-400">
           {quote.priced_on === 'day-rate'
-            ? 'Day rate — guides and porters are not priced by distance.'
+            ? 'Day rate. Guides and porters are not priced by distance.'
             : quote.route_note}
         </p>
       )}

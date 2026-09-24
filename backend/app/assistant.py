@@ -43,6 +43,10 @@ HARD RULES:
 9. RESTAURANT items come from a map directory, not from reviews: give name,
    cuisine and distance, and never claim quality, prices or opening hours
    the item does not state.
+
+STYLE: write the way a local guide talks, in short plain sentences. No em
+dashes, no headings, no bold labels ending in a colon, and bullet points only
+for a real list of several places or options.
 """
 
 STOP = set("a an the is are was were do does did can could should would will i my me we our you your to of in on at for from with about and or if it this that there how what when where which who whats whens please tell need want get got go going best good".split())
@@ -565,6 +569,15 @@ async def compose_gemini(question: str, context: str, history: List[dict]) -> st
         return None
 
 
+def plain(text: str) -> str:
+    """Answers read as a person wrote them: an em dash between clauses
+    becomes a comma, and a dash between numbers becomes "to"."""
+    text = re.sub(r"(\d)\s*[–—]\s*(\d)", r"\1 to \2", text)
+    text = re.sub(r"\s*—\s*", ", ", text)
+    text = re.sub(r",\s*([.,;:!?])", r"\1", text)
+    return text
+
+
 async def answer(question: str, history: List[dict] | None = None) -> dict:
     history = history or []
     ctx = retrieve(question)
@@ -591,6 +604,7 @@ async def answer(question: str, history: List[dict] | None = None) -> dict:
     # UI already shows every cited record as a chip, so drop the brackets.
     text = re.sub(r"\s?\[(?:[a-z0-9]+(?:-[a-z0-9]+)+(?:,\s*)?)+\]", "", text)
     text = re.sub(r"[ \t]+([.,;:])", r"\1", text)
+    text = plain(text)
     return {
         "answer": text,
         "citations": cites,

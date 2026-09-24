@@ -13,7 +13,7 @@ const MAX_IMAGES = 8
 const blankDay = () => ({ title: '', body: '' })
 const EMPTY = {
   title: '', destination: '', operator_id: '', pickup: 'Islamabad', price_pkr: '', days: 3,
-  highlight: '', difficulty: 'Moderate', group_size: '2–12', tags: '', includes: '', excludes: '',
+  highlight: '', difficulty: 'Moderate', group_size: '2-12', tags: '', includes: '', excludes: '',
   itinerary: [blankDay(), blankDay(), blankDay()], operator_url: '', whatsapp: '', images: [],
 }
 
@@ -52,7 +52,7 @@ function toBody(f) {
   return {
     title: f.title.trim(), destination: f.destination, operator_id: f.operator_id, pickup: f.pickup,
     price_pkr: Number(f.price_pkr), days: Number(f.days), highlight: f.highlight.trim(),
-    difficulty: f.difficulty, group_size: f.group_size.trim() || '2–12',
+    difficulty: f.difficulty, group_size: f.group_size.trim() || '2-12',
     tags: f.tags.split(',').map((t) => t.trim()).filter(Boolean).slice(0, 6),
     includes: lines(f.includes), excludes: lines(f.excludes),
     itinerary: f.itinerary.map((d) => ({ title: d.title.trim(), body: d.body.trim() })),
@@ -151,7 +151,7 @@ function PackageForm({ editing, onSaved, onCancel, lockOperator }) {
     try {
       const body = toBody(f)
       const res = await api.savePackage(editing?.id, body)
-      toast(res.persisted ? `Saved “${res.package.title}”` : 'Saved — but the server has no database, so it lasts until the next restart', res.persisted ? 'ok' : 'warn')
+      toast(res.persisted ? `Saved “${res.package.title}”` : 'Saved, but the server has no database, so it lasts until the next restart', res.persisted ? 'ok' : 'warn')
       onSaved(res.package)
     } catch (ex) {
       toast(ex.message, 'bad')
@@ -215,7 +215,7 @@ function PackageForm({ editing, onSaved, onCancel, lockOperator }) {
           </select>
         </Field>
         <div className="sm:col-span-2" data-invalid={Boolean(err('highlight'))}>
-          <Field label="Highlight line" htmlFor="pk-hl" error={err('highlight')} hint={`${f.highlight.length}/160 — shown under the title on the card`}>
+          <Field label="Highlight line" htmlFor="pk-hl" error={err('highlight')} hint={`${f.highlight.length}/160, shown under the title on the card`}>
             <input id="pk-hl" value={f.highlight} onChange={set('highlight')} maxLength={160} className={fieldClass(err('highlight'))}
                    placeholder="Poplars turning gold along the Karakoram Highway" />
           </Field>
@@ -269,7 +269,7 @@ function PackageForm({ editing, onSaved, onCancel, lockOperator }) {
 
       {/* images */}
       <div>
-        <div className="label">Images <span className="normal-case tracking-normal text-frost-400">— optional; destination photos are used when none are added</span></div>
+        <div className="label">Images <span className="normal-case tracking-normal text-frost-400">(optional, destination photos are used when none are added)</span></div>
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
           {f.images.map((u, i) => (
             <div key={u} className="group relative aspect-[4/3] overflow-hidden rounded-xl bg-ink-800">

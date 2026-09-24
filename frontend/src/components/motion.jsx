@@ -245,3 +245,14 @@ export const slideIn = (dir, i = 0) => ({
   exit: { opacity: 0, x: -36 * dir },
   transition: { duration: 0.6, delay: i * 0.06, ease },
 })
+
+/** A motion.div that tilts towards the cursor with a soft spotlight (desktop). */
+export function Tilt({ className = '', style, children, max = 5, ...rest }) {
+  const t = useTilt({ max })
+  return (
+    <motion.div {...rest} {...t.bind} style={{ ...style, ...t.style }} className={`relative ${className}`}>
+      {t.spotlight}
+      {children}
+    </motion.div>
+  )
+}

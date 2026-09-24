@@ -72,7 +72,7 @@ export default function Conditions() {
         <SectionTitle
           eyebrow="Live conditions layer"
           title="Every route, tracked and timestamped."
-          sub="Live weather from Open-Meteo, hazards from GDACS, earthquakes from USGS and the PMD tourist advisory — fused per route. Road status is reported by verified operators and admins on the ground, and every road shows who updated it and when."
+          sub="Live weather from Open-Meteo, hazards from GDACS, earthquakes from USGS and the PMD tourist advisory, fused per route. Road status is reported by verified operators and admins on the ground, and every road shows who updated it and when."
         />
       </Reveal>
 
@@ -173,7 +173,7 @@ export default function Conditions() {
                   <span>
                     {w.sources_agree
                       ? `Confirmed by a second provider (${w.second_opinion?.temp_c}°, OpenWeatherMap).`
-                      : `Providers disagree by ${w.temp_gap_c}° — OpenWeatherMap reads ${w.second_opinion?.temp_c}°. Treat with caution.`}
+                      : `Providers disagree by ${w.temp_gap_c}°. OpenWeatherMap reads ${w.second_opinion?.temp_c}°. Treat with caution.`}
                     {typeof w.confidence === 'number' && (
                       <span className="opacity-70"> Confidence {Math.round(w.confidence * 100)}%.</span>
                     )}
@@ -182,7 +182,7 @@ export default function Conditions() {
               )}
               {w.driving_hazard && (
                 <div className="mt-2.5 rounded-lg border border-amberz-400/25 bg-amberz-400/10 px-2 py-1.5 text-[10px] leading-snug text-amberz-200">
-                  Driving conditions affected — allow extra time on this stretch.
+                  Driving conditions affected. Allow extra time on this stretch.
                 </div>
               )}
               <div className="mt-3 flex justify-between border-t border-white/[.07] pt-2.5">

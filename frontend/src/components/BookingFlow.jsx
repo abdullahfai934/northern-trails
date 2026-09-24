@@ -74,7 +74,7 @@ export default function BookingFlow({ pkg, onDone }) {
     try {
       const res = await api.book({ ...form, package_id: pkg.id, travelers: Number(form.travelers) })
       setConfirmed(res)
-      toast('Booking held — ' + res.booking_id)
+      toast('Booking held: ' + res.booking_id)
     } catch (err) {
       if (err.fields && Object.keys(err.fields).length) setErrors(err.fields)
       toast(err.message || 'Booking failed', 'bad')
@@ -97,7 +97,7 @@ export default function BookingFlow({ pkg, onDone }) {
       <div className="space-y-5">
         <SuccessCheck />
         <div className="text-center">
-          <div className="text-[11px] font-semibold uppercase tracking-wide text-amberz-300">Held — payment required</div>
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-amberz-300">Held, payment required</div>
           <div className="mt-1 font-mono text-lg font-bold text-frost-50">{confirmed.booking_id}</div>
           <div className="mt-1 text-[13px] text-frost-300">{confirmed.package}</div>
           <div className="mt-0.5 text-[12px] text-frost-400">with {confirmed.operator}</div>
@@ -159,7 +159,7 @@ export default function BookingFlow({ pkg, onDone }) {
           <input id="bk-phone" type="tel" value={form.phone} onChange={set('phone')} onBlur={blur('phone')}
                  autoComplete="tel" inputMode="tel" className={fieldClass(touched.phone && errors.phone)} placeholder="+92 3xx xxxxxxx" />
         </Field>
-        <Field label="Email" htmlFor="bk-email" error={touched.email && errors.email} hint="Optional — for the receipt">
+        <Field label="Email" htmlFor="bk-email" error={touched.email && errors.email} hint="Optional, for the receipt">
           <input id="bk-email" type="email" value={form.email} onChange={set('email')} onBlur={blur('email')}
                  autoComplete="email" className={fieldClass(touched.email && errors.email)} placeholder="you@example.com" />
         </Field>
@@ -174,7 +174,7 @@ export default function BookingFlow({ pkg, onDone }) {
                  className={fieldClass(touched.travelers && errors.travelers)} />
         </Field>
       </div>
-      <Field label="Notes for the operator" htmlFor="bk-notes" hint="Optional — dietary needs, pickup hotel, anything else">
+      <Field label="Notes for the operator" htmlFor="bk-notes" hint="Optional. Dietary needs, pickup hotel, anything else">
         <textarea id="bk-notes" rows={2} maxLength={500} value={form.notes} onChange={set('notes')} className="field resize-none" />
       </Field>
       <div className="glass rounded-xl p-4 text-[13px]">
@@ -183,7 +183,7 @@ export default function BookingFlow({ pkg, onDone }) {
       <button type="submit" disabled={submitting} className="btn-primary w-full">
         {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving your booking…</> : 'Confirm reservation'}
       </button>
-      <p className="text-center text-[11px] text-frost-400">No charge yet — you pay after the booking is held.</p>
+      <p className="text-center text-[11px] text-frost-400">No charge yet. You pay after the booking is held.</p>
     </form>
   )
 }

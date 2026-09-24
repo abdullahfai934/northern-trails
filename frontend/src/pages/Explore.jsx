@@ -102,7 +102,7 @@ export default function Explore() {
         <SectionTitle
           eyebrow="Planned trips"
           title="Compare multi-day packages."
-          sub="Filter by price, duration, pickup point and destination — the way an actual traveler shops, not the way a Facebook post reads."
+          sub="Filter by price, duration, pickup point and destination, the way an actual traveler shops, not the way a Facebook post reads."
         />
       </Reveal>
 
@@ -156,7 +156,7 @@ export default function Explore() {
                         className="glass rounded-2xl p-12 text-center">
               <div className="text-[15px] font-bold text-frost-100">No trips match those filters</div>
               <p className="mx-auto mt-2 max-w-sm text-[13px] text-frost-400">
-                Widen the budget or duration — or post it as an on-demand request and let operators bid.
+                Widen the budget or duration, or post it as an on-demand request and let operators bid.
               </p>
               <button onClick={reset} className="btn-ghost mt-5 !py-2.5 !text-[13px]">Clear filters</button>
             </motion.div>

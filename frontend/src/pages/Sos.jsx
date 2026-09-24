@@ -89,7 +89,7 @@ export default function Sos() {
     const num = waNumber(contact.phone)
     if (!num) { toast('Add an emergency contact number first', 'warn'); return }
     const where = pos ? `https://maps.google.com/?q=${pos.lat.toFixed(6)},${pos.lon.toFixed(6)}` : ''
-    const msg = `EMERGENCY — I need help. ${where ? `My location: ${where} (±${pos.acc} m).` : 'I could not get my GPS location.'} Sent from Northern Trails.`
+    const msg = `EMERGENCY. I need help. ${where ? `My location is ${where} (±${pos.acc} m).` : 'I could not get my GPS location.'} Sent from Northern Trails.`
     window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener')
   }
 

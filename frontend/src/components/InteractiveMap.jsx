@@ -284,7 +284,7 @@ export default function InteractiveMap() {
                 <div className="font-semibold">{x.name} · {x.elevation_m} m</div>
                 <div className="mb-1 opacity-80">{x.blurb}</div>
                 {(pkgsByDest[x.name] || []).map((p) => (
-                  <div key={p.id}><Link to={`/explore/${p.id}`}>{p.title}</Link> — {p.days} days, {pkr(p.price_pkr)}</div>
+                  <div key={p.id}><Link to={`/explore/${p.id}`}>{p.title}</Link>, {p.days} days, {pkr(p.price_pkr)}</div>
                 ))}
               </Popup>
             </CircleMarker>

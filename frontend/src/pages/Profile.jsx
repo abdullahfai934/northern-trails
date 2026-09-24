@@ -310,7 +310,7 @@ function Settings() {
     setPushBusy(true)
     try {
       const ok = await auth.enablePush()
-      toast(ok ? 'Alerts will pop up on this device' : 'Notifications are blocked in this browser — allow them in site settings', ok ? 'ok' : 'warn')
+      toast(ok ? 'Alerts will pop up on this device' : 'Notifications are blocked in this browser. Allow them in site settings.', ok ? 'ok' : 'warn')
     } catch (e) { toast(e.message, 'bad') } finally { setPushBusy(false) }
   }
 

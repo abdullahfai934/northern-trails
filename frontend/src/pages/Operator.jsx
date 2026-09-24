@@ -56,7 +56,7 @@ function Console() {
       if (m.type === 'job.confirmed') {
         setConfirmed((c) => [m.request, ...c])
         setJobs((j) => j.filter((x) => x.id !== m.request.id))
-        toast('You won the job — ' + m.request.id)
+        toast('You won the job ' + m.request.id)
       }
       if (m.type === 'job.taken') setJobs((j) => j.filter((x) => x.id !== m.request_id))
     }
@@ -82,7 +82,7 @@ function Console() {
     setOnline(next)
     try {
       await api.availability(opId, next)
-      toast(next ? 'You are online — jobs will be dispatched to you.' : 'You are offline.', next ? 'ok' : 'warn')
+      toast(next ? 'You are online. Jobs will be dispatched to you.' : 'You are offline.', next ? 'ok' : 'warn')
     } catch (e) {
       setOnline(!next)
       toast('Could not change availability: ' + e.message, 'bad')
@@ -193,7 +193,7 @@ function Console() {
                 <Inbox className="mx-auto h-7 w-7 text-frost-400" strokeWidth={1.6} />
                 <div className="mt-3 text-[14px] font-bold text-frost-100">No open requests</div>
                 <p className="mx-auto mt-1.5 max-w-sm text-[12.5px] leading-relaxed text-frost-400">
-                  Post one from the <span className="text-glacier-300">Instant</span> page in another tab —
+                  Post one from the <span className="text-glacier-300">Instant</span> page in another tab and
                   it will arrive here over the WebSocket within a couple of seconds.
                 </p>
               </motion.div>
@@ -232,7 +232,7 @@ function Console() {
 
                     {job.bid ? (
                       <div className="mt-4 rounded-xl bg-emerald-400/10 px-4 py-2.5 text-center text-[12.5px] font-semibold text-emerald-300">
-                        Offer sent — waiting for the traveler
+                        Offer sent, waiting for the traveler
                       </div>
                     ) : (
                       <div className="mt-4 flex flex-wrap gap-2">

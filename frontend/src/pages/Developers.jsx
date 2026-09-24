@@ -230,7 +230,7 @@ function KeyManager({ onUse }) {
         {fresh && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
             className="mt-4 rounded-xl border border-amberz-400/25 bg-amberz-400/[.07] p-3">
-            <div className="text-[12px] font-semibold text-amberz-200">{t('Copy this key now — it will not be shown again.')}</div>
+            <div className="text-[12px] font-semibold text-amberz-200">{t('Copy this key now. It will not be shown again.')}</div>
             <div className="mt-2 flex items-center gap-2">
               <code className="min-w-0 flex-1 truncate rounded-md bg-ink-950/70 px-2 py-1.5 font-mono text-[12px] text-frost-50">{fresh.key}</code>
               <CopyButton text={fresh.key} />

@@ -87,7 +87,7 @@ export default function Plan() {
         <SectionTitle
           eyebrow="Trip planner"
           title={mode === 'ai' ? t('Your trip, planned day by day.') : t("Tell us the trip. We'll tell you where it works.")}
-          sub="Every destination is compared against your budget, dates, group and interests — and against the road, weather and incident records as they stand right now. You get the reasons, not a verdict."
+          sub="Every destination is compared against your budget, dates, group and interests, and against the road, weather and incident records as they stand right now. You get the reasons, not a verdict."
         />
       </Reveal>
 
@@ -199,7 +199,7 @@ export default function Plan() {
                 <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-frost-400">
                   Each destination comes back with a Travel Condition Score built from four
                   weighted components, the reasons it does or doesn't fit your brief, and the
-                  road, weather and incident records behind every one of them — with timestamps.
+                  road, weather and incident records behind every one of them, with timestamps.
                 </p>
               </div>
             </Reveal>
@@ -481,7 +481,7 @@ function Methodology({ m }) {
                   {Object.entries(m.components).map(([k, v]) => (
                     <li key={k}>
                       <span className="font-bold text-frost-100">
-                        {COMPONENT_LABEL[k] || k} — {Math.round(m.weights[k] * 100)}%
+                        {COMPONENT_LABEL[k] || k} ({Math.round(m.weights[k] * 100)}%)
                       </span>
                       <br />{v}
                     </li>

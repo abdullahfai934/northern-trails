@@ -249,9 +249,20 @@ export function BottomTabs() {
 }
 
 export function Footer() {
+  // The columns fold down into place (a 3D hinge along their top edge) as the
+  // footer scrolls into view. CSS transitions in index.css, .nt-fold.
+  const ref = useRef(null)
+  const [open, setOpen] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el || typeof IntersectionObserver === 'undefined') { setOpen(true); return undefined }
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setOpen(true); io.disconnect() } }, { rootMargin: '0px 0px -12% 0px' })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
   return (
-    <footer className="relative mt-28 border-t border-white/[.07] px-5 pb-28 pt-14 sm:px-8 lg:pb-14">
-      <div className="mx-auto grid max-w-7xl gap-10 sm:grid-cols-2 lg:grid-cols-4">
+    <footer ref={ref} className="relative mt-28 border-t border-white/[.07] px-5 pb-28 pt-14 sm:px-8 lg:pb-14">
+      <div className={`nt-fold mx-auto grid max-w-7xl gap-10 sm:grid-cols-2 lg:grid-cols-4 ${open ? 'nt-fold-open' : ''}`}>
         <div>
           <div className="mb-3 flex items-center gap-2 text-frost-50">
             <Mountain className="h-4 w-4 text-glacier-300" />
@@ -259,7 +270,7 @@ export function Footer() {
           </div>
           <p className="max-w-xs text-[13px] leading-relaxed text-frost-400">
             A hybrid marketplace for Northern Pakistan: plan multi-day tours, or match with a
-            verified operator in real time — on top of a live road, weather and permit layer.
+            verified operator in real time, on top of a live road, weather and permit layer.
           </p>
         </div>
         <FooterCol title="Product" links={[['Explore packages', '/explore'], ['Plan a trip', '/plan'], ['Interactive map', '/map'], ['Budget calculator', '/budget'], ['Live conditions', '/conditions'], ['AI assistant', '/assistant'], ['Emergency SOS', '/sos']]} />
@@ -315,7 +326,7 @@ function DataSources() {
               title={state === 'live' ? 'Fetched live' :
                      state === 'key' ? 'Active once an API key is set' :
                      state === 'blocked' ? 'Reachable only via an official feed' :
-                     'Verified by hand — no public registry to query'}
+                     'Verified by hand, no public registry to query'}
               className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${DOT[state]} ${
                 state === 'live' ? 'animate-pulse' : ''}`}
             />

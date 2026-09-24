@@ -57,7 +57,7 @@ export default function PayReturn() {
                   : 'This page was opened without a booking reference.'}
               </p>
               <p className="mt-2">
-                If money left your account, keep the reference above — nothing is charged twice.
+                If money left your account, keep the reference above. Nothing is charged twice.
               </p>
             </Outcome>
           )}
@@ -76,7 +76,7 @@ export default function PayReturn() {
               {!confirmed && hint && (
                 <p className="mb-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs">
                   The return link claimed success, but the server could not verify that
-                  callback — so the booking stays unpaid. This is the check that stops a
+                  callback, so the booking stays unpaid. This is the check that stops a
                   forged redirect confirming a booking.
                 </p>
               )}

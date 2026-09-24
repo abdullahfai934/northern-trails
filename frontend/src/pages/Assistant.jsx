@@ -21,7 +21,7 @@ const GREETING = {
   id: 'greeting',
   role: 'assistant',
   content:
-    "I'm the live-conditions assistant. I answer from the current road-status feed, weather, recent earthquakes and hazards, the package catalogue and restaurants near each destination — and I'll tell you when I don't have a record rather than guess.\n\nAsk me about a route, a closure, a trip within your budget, or where to eat.",
+    "I'm the live-conditions assistant. I answer from the current road-status feed, weather, recent earthquakes and hazards, the package catalogue and restaurants near each destination, and I'll tell you when I don't have a record rather than guess.\n\nAsk me about a route, a closure, a trip within your budget, or where to eat.",
   citations: [],
 }
 
@@ -107,7 +107,7 @@ export default function Assistant() {
             </h1>
             <p className="mt-2 max-w-xl text-[14px] leading-relaxed text-frost-300">
               Before every answer, the matching road, weather, hazard, package and restaurant records
-              are sent to the model with your question — and it may only answer from those.
+              are sent to the model with your question, and it may only answer from those.
             </p>
           </div>
           {messages.length > 1 && (
@@ -225,7 +225,7 @@ export default function Assistant() {
               </button>
             </div>
             <p className="mt-2 text-[11px] text-frost-400">
-              Safety-critical answers are only as fresh as the feed behind them — always confirm a closure with the operator before you set off.
+              Safety-critical answers are only as fresh as the feed behind them, so always confirm a closure with the operator before you set off.
             </p>
           </form>
         </div>
@@ -268,7 +268,7 @@ function Citations({ items }) {
       </div>
       <div className="flex flex-wrap gap-1.5">
         {items.map((c) => (
-          <span key={c.id} title={`${c.label || c.id} — ${c.source}${c.updated_at ? ' · ' + c.updated_at : ''}`}
+          <span key={c.id} title={`${c.label || c.id}, ${c.source}${c.updated_at ? ' · ' + c.updated_at : ''}`}
             className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-mono text-[10px] ring-1 ${KIND_TONE[c.kind] || KIND_TONE.road}`}>
             <ShieldCheck className="h-3 w-3" />{c.kind === 'restaurant' ? c.label : c.id}
           </span>

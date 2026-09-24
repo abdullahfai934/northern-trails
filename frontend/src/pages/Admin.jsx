@@ -85,7 +85,7 @@ function Overview() {
           <BarChart data={s.ratings.map((r) => ({ label: `${r.stars} ★`, value: r.count }))} format={(v) => `${v} ${t('reviews')}`} height={160} emptyText={t('No approved reviews yet')} />
         </div>
       </div>
-      <p className="text-[11.5px] text-frost-400">{t('Users by role')}: {Object.entries(s.roles).map(([k, v]) => `${t(k)} ${v}`).join(' · ') || '—'}</p>
+      <p className="text-[11.5px] text-frost-400">{t('Users by role')} {Object.entries(s.roles).map(([k, v]) => `${t(k)} ${v}`).join(' · ') || '—'}</p>
     </div>
   )
 }

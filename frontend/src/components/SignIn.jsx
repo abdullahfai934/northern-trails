@@ -112,12 +112,12 @@ function EmailForm({ onDone }) {
     try {
       if (mode === 'reset') {
         await auth.resetPassword(email.trim())
-        toast(`Reset link sent to ${email.trim()} — check your inbox`)
+        toast(`Reset link sent to ${email.trim()}. Check your inbox.`)
         setMode('signin')
       } else if (mode === 'signup') {
         await auth.signUpEmail(name.trim(), email.trim(), password)
         try { auth.setProfile(await api.updateMe({ name: name.trim() })) } catch { /* profile catches up on next load */ }
-        toast('Account created — we sent you a verification email')
+        toast('Account created. We sent you a verification email.')
         onDone?.()
       } else {
         await auth.signInEmail(email.trim(), password)
