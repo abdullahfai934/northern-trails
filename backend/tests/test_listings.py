@@ -183,11 +183,32 @@ def _pkg_body(**over):
     return body
 
 
-def test_admin_requires_token(client):
+def test_package_admin_needs_an_operator_or_admin(client, as_user):
+    as_user("guest")
     assert client.post("/api/admin/packages", json=_pkg_body()).status_code == 401
     assert client.post("/api/admin/packages", json=_pkg_body(),
                        headers={"X-Admin-Token": "wrong"}).status_code == 401
+    as_user("tourist")
+    assert client.post("/api/admin/packages", json=_pkg_body()).status_code == 403
+    # An operator may only add packages for their own operator.
+    as_user("operator", operator_id="op-karakoram")
+    assert client.post("/api/admin/packages", json=_pkg_body()).status_code == 403
     assert client.get("/api/admin/status").json()["enabled"] is True
+
+
+def test_operator_can_manage_own_packages(client, as_user):
+    as_user("operator", operator_id="op-hunza-guides")
+    r = client.post("/api/admin/packages", json=_pkg_body(title="Operator Own Trip"))
+    assert r.status_code == 201
+    pid = r.json()["package"]["id"]
+    assert client.delete(f"/api/admin/packages/{pid}").status_code == 200
+
+
+def test_admin_token_still_works_for_scripts(client, as_user):
+    as_user("guest")
+    r = client.post("/api/admin/packages", json=_pkg_body(title="Scripted Trip"), headers=ADMIN)
+    assert r.status_code == 201
+    assert client.delete(f"/api/admin/packages/{r.json()['package']['id']}", headers=ADMIN).status_code == 200
 
 
 def test_admin_verify_reports_match_without_erroring(client):

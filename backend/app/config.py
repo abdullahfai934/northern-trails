@@ -92,6 +92,23 @@ FIREBASE_AUTH_EMULATOR_HOST = _flag("FIREBASE_AUTH_EMULATOR_HOST")
 
 # --------------------------------------------------------------------- push
 FCM_SERVICE_ACCOUNT = _flag("FCM_SERVICE_ACCOUNT_JSON")   # path OR raw JSON
+#: One service account for everything Google: FCM push and Firestore profiles.
+GOOGLE_SERVICE_ACCOUNT = _flag("GOOGLE_SERVICE_ACCOUNT_JSON") or FCM_SERVICE_ACCOUNT
+#: Emails made admins on first sign-in (comma-separated). Everyone else
+#: starts as a tourist; admins promote operators from the dashboard.
+ADMIN_EMAILS = {e.strip().lower() for e in _flag("ADMIN_EMAILS").split(",") if e.strip()}
+
+# -------------------------------------------------------------------- email
+#: Optional SMTP for alert emails. Without it alerts go by push and in-app.
+SMTP_HOST = _flag("SMTP_HOST")
+SMTP_PORT = _int("SMTP_PORT", 587)
+SMTP_USER = _flag("SMTP_USER")
+SMTP_PASSWORD = _flag("SMTP_PASSWORD")
+SMTP_FROM = _flag("SMTP_FROM") or SMTP_USER
+#: Public site address used in links inside notifications.
+SITE_URL = _flag("SITE_URL", "https://northern-trails-fyp.web.app")
+#: How often the smart-alert checker runs, in hours.
+ALERT_CHECK_HOURS = float(_flag("ALERT_CHECK_HOURS", "3") or 3)
 
 # ----------------------------------------------------------------- payments
 PAYMENTS_PROVIDER = _flag("PAYMENTS_PROVIDER", "mock").lower()
@@ -133,7 +150,9 @@ def feature_report() -> dict:
         "routing": "osrm" if POLL_ENABLED else "estimate",
         "auth": ("firebase-emulator" if (FIREBASE_PROJECT_ID and FIREBASE_AUTH_EMULATOR_HOST)
                  else "firebase" if FIREBASE_PROJECT_ID else "disabled"),
-        "push": "fcm" if FCM_SERVICE_ACCOUNT else "disabled",
+        "push": "fcm" if GOOGLE_SERVICE_ACCOUNT else "disabled",
+        "profiles": "firestore" if GOOGLE_SERVICE_ACCOUNT else "in-memory",
+        "email": "smtp" if (SMTP_HOST and SMTP_USER) else "disabled",
         "photos": "unsplash+wikimedia" if UNSPLASH_KEY else "wikimedia",
         "restaurants": "google-places" if GOOGLE_PLACES_KEY else "openstreetmap",
         "admin": "enabled" if ADMIN_TOKEN else "disabled",

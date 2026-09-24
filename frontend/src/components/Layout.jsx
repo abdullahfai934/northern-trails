@@ -1,11 +1,16 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { AuthButton } from './SignIn'
 import { apiDocsUrl } from '../lib/api'
 import { useTheme } from '../lib/theme'
 import { useWishlist } from '../lib/wishlist'
+import { useLanguage, useT } from '../lib/i18n'
 import { AnimatePresence, motion, useScroll, useSpring } from 'framer-motion'
-import { Compass, Zap, Radio, Sparkles, LayoutDashboard, Mountain, Github, Wand2, Heart, Sun, Moon } from 'lucide-react'
+import {
+  Compass, Zap, Radio, Sparkles, LayoutDashboard, Mountain, Github, Wand2, Heart, Sun, Moon,
+  Map as MapIcon, Calculator, Siren, Code2, ChevronDown, MoreHorizontal, Languages,
+} from 'lucide-react'
+import { Sheet, ease } from './ui'
 
 const NAV = [
   { to: '/plan',       label: 'Plan',       icon: Wand2 },
@@ -14,6 +19,13 @@ const NAV = [
   { to: '/conditions', label: 'Conditions', icon: Radio },
   { to: '/assistant',  label: 'Assistant',  icon: Sparkles },
   { to: '/operator',   label: 'Operator',   icon: LayoutDashboard },
+]
+
+const MORE = [
+  { to: '/map',        label: 'Interactive map',  icon: MapIcon,    sub: 'Hospitals, fuel, police, closures' },
+  { to: '/budget',     label: 'Budget calculator', icon: Calculator, sub: 'Transport, hotels, food, fees' },
+  { to: '/sos',        label: 'Emergency SOS',    icon: Siren,      sub: 'Rescue 1122 and share location' },
+  { to: '/developers', label: 'Developer API',    icon: Code2,      sub: 'Public REST API and keys' },
 ]
 
 export function ScrollProgress() {
@@ -27,7 +39,63 @@ export function ScrollProgress() {
   )
 }
 
+function MoreMenu() {
+  const t = useT()
+  const [open, setOpen] = useState(false)
+  const { pathname } = useLocation()
+  const ref = useRef(null)
+  useEffect(() => setOpen(false), [pathname])
+  useEffect(() => {
+    if (!open) return undefined
+    const onDoc = (e) => { if (!ref.current?.contains(e.target)) setOpen(false) }
+    const onKey = (e) => e.key === 'Escape' && setOpen(false)
+    document.addEventListener('mousedown', onDoc)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey) }
+  }, [open])
+  const active = MORE.some((m) => pathname.startsWith(m.to))
+  return (
+    <div className="relative" ref={ref}>
+      <button onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open}
+        className={`flex items-center gap-1 rounded-lg px-3 py-2 text-[13px] font-semibold transition-colors
+          ${active || open ? 'text-frost-50' : 'text-frost-300 hover:text-frost-100'}`}>
+        {t('More')} <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div role="menu" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.22, ease }}
+            className="glass-strong absolute start-0 top-11 z-[90] w-72 rounded-2xl p-1.5">
+            {MORE.map(({ to, label, icon: Icon, sub }) => (
+              <Link key={to} to={to} role="menuitem"
+                className="flex items-start gap-3 rounded-xl px-3 py-2.5 transition hover:bg-white/[.05]">
+                <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-glacier-400/10 text-glacier-300"><Icon className="h-4 w-4" /></span>
+                <span>
+                  <span className="block text-[13px] font-semibold text-frost-50">{t(label)}</span>
+                  <span className="block text-[11.5px] text-frost-400">{t(sub)}</span>
+                </span>
+              </Link>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+function LanguageToggle() {
+  const { isUrdu, setLanguage } = useLanguage()
+  return (
+    <button onClick={() => setLanguage(isUrdu ? 'en' : 'ur')}
+      aria-label={isUrdu ? 'Switch to English' : 'اردو میں دیکھیں'} title={isUrdu ? 'English' : 'اردو'}
+      className="flex h-9 items-center gap-1 rounded-lg border border-white/10 px-2 text-[12px] font-semibold text-frost-200 transition hover:bg-white/[.06] hover:text-frost-50">
+      <Languages className="hidden h-3.5 w-3.5 2xl:block" /> <span className={isUrdu ? '' : 'font-urdu'}>{isUrdu ? 'EN' : 'اردو'}</span>
+    </button>
+  )
+}
+
 export function TopNav() {
+  const t = useT()
   const [solid, setSolid] = useState(false)
   const { pathname } = useLocation()
 
@@ -39,55 +107,58 @@ export function TopNav() {
   }, [])
 
   return (
-    <header className={`fixed inset-x-0 top-0 z-[75] transition-all duration-500
-      ${solid ? 'border-b border-white/[.07] bg-ink-950/80 backdrop-blur-xl' : 'border-b border-transparent'}
+    <motion.header
+      initial={{ y: -24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.7, ease }}
+      className={`fixed inset-x-0 top-0 z-[75] transition-[background-color,border-color,backdrop-filter] duration-500
+      ${solid ? 'border-b border-white/[.06] bg-ink-950/75 backdrop-blur-xl' : 'border-b border-transparent'}
       ${!solid && pathname === '/' ? 'on-photo' : ''}`}>
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
-        <Link to="/" className="group flex items-center gap-2.5">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-8">
+        <Link to="/" className="group flex shrink-0 items-center gap-2.5">
           <span className="relative grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-glacier-400/90 to-amberz-400/80 text-abyss shadow-glow">
             <Mountain className="h-[18px] w-[18px]" strokeWidth={2.4} />
           </span>
           <span className="leading-tight">
             <span className="block font-display text-[15px] font-semibold tracking-normal text-frost-50">Northern Trails</span>
-            <span className="hidden text-[10px] font-medium uppercase tracking-[.18em] text-frost-400 sm:block">Gilgit-Baltistan · Chitral</span>
+            <span className="hidden text-[10px] font-medium uppercase tracking-[.18em] text-frost-400 2xl:block">Gilgit-Baltistan · Chitral</span>
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-1 lg:flex">
+        <nav className="hidden items-center gap-0.5 xl:flex" aria-label="Main">
           {NAV.map(({ to, label, icon: Icon }) => {
             const active = pathname.startsWith(to)
             return (
               <NavLink key={to} to={to}
-                className={`relative rounded-lg px-3.5 py-2 text-[13px] font-semibold transition-colors
+                className={`relative rounded-lg px-3 py-2 text-[13px] font-semibold transition-colors
                   ${active ? 'text-frost-50' : 'text-frost-300 hover:text-frost-100'}`}>
                 {active && (
-                  <motion.span layoutId="nav-pill" className="absolute inset-0 rounded-lg bg-white/[.07] ring-1 ring-white/10"
-                    transition={{ type: 'spring', stiffness: 380, damping: 32 }} />
+                  <motion.span layoutId="nav-pill" className="absolute inset-0 rounded-lg bg-white/[.06] ring-1 ring-white/[.06]"
+                    transition={{ duration: 0.45, ease }} />
                 )}
                 <span className="relative flex items-center gap-1.5">
-                  <Icon className="h-3.5 w-3.5" /> {label}
+                  <Icon className="h-3.5 w-3.5" /> {t(label)}
                 </span>
               </NavLink>
             )
           })}
+          <MoreMenu />
         </nav>
 
         <div className="flex items-center gap-1.5 sm:gap-2">
+          <Link to="/developers"
+            className={`hidden h-9 items-center gap-1.5 rounded-lg border px-3 text-[12px] font-semibold transition md:flex
+              ${pathname.startsWith('/developers') ? 'border-glacier-400/40 text-frost-50' : 'border-white/10 text-frost-300 hover:bg-white/[.06] hover:text-frost-50'}`}>
+            <Code2 className="h-3.5 w-3.5" /> API
+          </Link>
+          <LanguageToggle />
           <WishlistLink />
           <ThemeToggle />
           <AuthButton />
-          {apiDocsUrl && (
-            <a href={apiDocsUrl} target="_blank" rel="noreferrer"
-               className="hidden rounded-lg border border-white/10 px-3 py-2 text-[12px] font-semibold text-frost-300 transition hover:bg-white/[.06] hover:text-frost-50 sm:block">
-              API
-            </a>
-          )}
-          <Link to="/instant" className="btn-primary !hidden !px-4 !py-2 !text-[13px] sm:!inline-flex">
-            <Zap className="h-3.5 w-3.5" /> Get a ride
+          <Link to="/instant" className="btn-primary !hidden whitespace-nowrap !px-4 !py-2 !text-[13px] sm:!inline-flex">
+            <Zap className="h-3.5 w-3.5" /> {t('Get a ride')}
           </Link>
         </div>
       </div>
-    </header>
+    </motion.header>
   )
 }
 
@@ -125,29 +196,55 @@ function WishlistLink() {
   )
 }
 
+/** Mobile tab bar: the five main sections, and "More" for everything else. */
 export function BottomTabs() {
+  const t = useT()
   const { pathname } = useLocation()
+  const [more, setMore] = useState(false)
+  useEffect(() => setMore(false), [pathname])
+  const tabs = NAV.filter((n) => n.to !== '/operator')
+  const moreItems = [...MORE, NAV.find((n) => n.to === '/operator')]
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-[75] lg:hidden">
-      <div className="mx-3 mb-3 flex items-center justify-around rounded-2xl border border-white/[.08] bg-ink-900/90 px-1.5 py-1.5 backdrop-blur-2xl shadow-lift">
-        {NAV.map(({ to, label, icon: Icon }) => {
-          const active = pathname.startsWith(to)
-          return (
-            <NavLink key={to} to={to} className="relative flex-1 py-2 text-center">
-              {active && (
-                <motion.span layoutId="tab-pill" className="absolute inset-0 rounded-xl bg-white/[.08]"
-                  transition={{ type: 'spring', stiffness: 400, damping: 34 }} />
-              )}
-              <span className={`relative flex flex-col items-center gap-1 text-[10px] font-semibold transition-colors
-                ${active ? 'text-glacier-300' : 'text-frost-400'}`}>
-                <Icon className="h-[18px] w-[18px]" strokeWidth={active ? 2.5 : 2} />
-                {label}
+    <>
+      <nav className="fixed inset-x-0 bottom-0 z-[75] xl:hidden" aria-label="Sections">
+        <div className="mx-3 mb-3 flex items-center justify-around rounded-2xl border border-white/[.07] bg-ink-900/90 px-1.5 py-1.5 backdrop-blur-2xl shadow-lift">
+          {tabs.map(({ to, label, icon: Icon }) => {
+            const active = pathname.startsWith(to)
+            return (
+              <NavLink key={to} to={to} className="relative flex-1 py-2 text-center">
+                {active && (
+                  <motion.span layoutId="tab-pill" className="absolute inset-0 rounded-xl bg-white/[.07]"
+                    transition={{ duration: 0.4, ease }} />
+                )}
+                <span className={`relative flex flex-col items-center gap-1 text-[10px] font-semibold transition-colors
+                  ${active ? 'text-glacier-300' : 'text-frost-400'}`}>
+                  <Icon className="h-[18px] w-[18px]" strokeWidth={active ? 2.5 : 2} />
+                  {t(label)}
+                </span>
+              </NavLink>
+            )
+          })}
+          <button onClick={() => setMore(true)} className="relative flex-1 py-2 text-center" aria-label={t('More')}>
+            <span className="flex flex-col items-center gap-1 text-[10px] font-semibold text-frost-400">
+              <MoreHorizontal className="h-[18px] w-[18px]" /> {t('More')}
+            </span>
+          </button>
+        </div>
+      </nav>
+      <Sheet open={more} onClose={() => setMore(false)} title={t('More')} side="bottom">
+        <div className="grid gap-1.5 pb-4">
+          {moreItems.map(({ to, label, icon: Icon, sub }) => (
+            <Link key={to} to={to} className="flex items-center gap-3 rounded-xl px-3 py-3 transition hover:bg-white/[.05]">
+              <span className="grid h-9 w-9 place-items-center rounded-lg bg-glacier-400/10 text-glacier-300"><Icon className="h-4 w-4" /></span>
+              <span>
+                <span className="block text-[14px] font-semibold text-frost-50">{t(label)}</span>
+                {sub && <span className="block text-[12px] text-frost-400">{t(sub)}</span>}
               </span>
-            </NavLink>
-          )
-        })}
-      </div>
-    </nav>
+            </Link>
+          ))}
+        </div>
+      </Sheet>
+    </>
   )
 }
 
@@ -165,8 +262,8 @@ export function Footer() {
             verified operator in real time — on top of a live road, weather and permit layer.
           </p>
         </div>
-        <FooterCol title="Product" links={[['Explore packages', '/explore'], ['Plan a trip', '/plan'], ['Instant match', '/instant'], ['Live conditions', '/conditions'], ['AI assistant', '/assistant'], ['Your wishlist', '/wishlist']]} />
-        <FooterCol title="Operators" links={[['Operator console', '/operator'], ['Manage packages', '/admin'], ...(apiDocsUrl ? [['API reference', apiDocsUrl]] : [])]} />
+        <FooterCol title="Product" links={[['Explore packages', '/explore'], ['Plan a trip', '/plan'], ['Interactive map', '/map'], ['Budget calculator', '/budget'], ['Live conditions', '/conditions'], ['AI assistant', '/assistant'], ['Emergency SOS', '/sos']]} />
+        <FooterCol title="Operators" links={[['Operator console', '/operator'], ['Admin dashboard', '/admin'], ['Developer API', '/developers'], ...(apiDocsUrl ? [['Swagger reference', apiDocsUrl]] : [])]} />
         <DataSources />
       </div>
       <div className="mx-auto mt-12 flex max-w-7xl flex-col items-center justify-between gap-3 border-t border-white/[.06] pt-6 text-[12px] text-frost-400 sm:flex-row">
@@ -234,18 +331,19 @@ function DataSources() {
 }
 
 function FooterCol({ title, links }) {
+  const t = useT()
   return (
     <div>
-      <h4 className="mb-3 text-[11px] font-bold uppercase tracking-[.18em] text-frost-400">{title}</h4>
+      <h4 className="mb-3 text-[11px] font-bold uppercase tracking-[.18em] text-frost-400">{t(title)}</h4>
       <ul className="space-y-2 text-[13px]">
         {links.map(([label, to]) => (
           <li key={to}>
             {/* absolute URLs and /api paths leave the SPA router */}
             {/^https?:\/\//.test(to) || to.startsWith('/api') ? (
               <a href={to} target="_blank" rel="noreferrer"
-                 className="text-frost-300 transition hover:text-glacier-300">{label}</a>
+                 className="text-frost-300 transition hover:text-glacier-300">{t(label)}</a>
             ) : (
-              <Link to={to} className="text-frost-300 transition hover:text-glacier-300">{label}</Link>
+              <Link to={to} className="text-frost-300 transition hover:text-glacier-300">{t(label)}</Link>
             )}
           </li>
         ))}

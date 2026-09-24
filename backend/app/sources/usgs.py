@@ -82,6 +82,8 @@ class UsgsSource(Source):
                 "issued_at": when.replace(microsecond=0).isoformat(),
                 "lat": lat,
                 "lon": lon,
+                "magnitude": float(mag),
+                "depth_km": round(depth, 1),
             })
         self.regional_count = regional
         return out

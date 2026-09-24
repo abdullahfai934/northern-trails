@@ -8,6 +8,7 @@ import {
 
 import { pkr, whatsappUrl } from '../lib/api'
 import { useWishlist } from '../lib/wishlist'
+import { useAuth } from '../lib/auth'
 import PlacePhoto from './PlacePhoto'
 import BookingFlow from './BookingFlow'
 import { Modal, Sheet, Stars, ease, useToast } from './ui'
@@ -45,7 +46,11 @@ export function PackageActionsProvider({ children }) {
   const [booking, setBooking] = useState(null)
 
   const openDetails = useCallback((pkg) => setDetails(pkg), [])
-  const openBooking = useCallback((pkg) => { setDetails(null); setBooking(pkg) }, [])
+  const auth = useAuth()
+  const openBooking = useCallback((pkg) => {
+    setDetails(null)
+    auth.requireAuth(() => setBooking(pkg), 'Sign in to book this trip')
+  }, [auth])
   const value = useMemo(() => ({ openDetails, openBooking }), [openDetails, openBooking])
 
   return (
@@ -184,7 +189,7 @@ function PackageDetails({ pkg, onBook, onClose }) {
             </Link>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <button onClick={() => toast(wish.toggle(pkg.id) ? 'Saved to your wishlist' : 'Removed from your wishlist')}
+            <button onClick={() => { const r = wish.toggle(pkg.id); if (r !== null) toast(r ? 'Saved to your wishlist' : 'Removed from your wishlist') }}
               className={`btn-ghost !px-3 !py-2.5 !text-[12px] ${saved ? '!border-rose-400/40 !text-rose-300' : ''}`}
               aria-pressed={saved}>
               <Heart className={`h-3.5 w-3.5 ${saved ? 'fill-current' : ''}`} /> {saved ? 'Saved' : 'Save'}

@@ -22,12 +22,18 @@ import Operator from './pages/Operator'
 import PayReturn from './pages/PayReturn'
 import Wishlist from './pages/Wishlist'
 import Admin from './pages/Admin'
+import Profile from './pages/Profile'
+import Developers from './pages/Developers'
+import MapPage from './pages/MapPage'
+import Sos from './pages/Sos'
+import Budget from './pages/Budget'
+import { SignInSheet } from './components/SignIn'
 
-/** Every route slides in from the right and out to the left — one continuous surface. */
+/** Pages fade and rise into place, and fade out upward — slow, ease-out, never bouncy. */
 const pageVariants = {
-  initial: { opacity: 0, x: 42, filter: 'blur(8px)' },
-  enter:   { opacity: 1, x: 0,  filter: 'blur(0px)', transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] } },
-  exit:    { opacity: 0, x: -32, filter: 'blur(8px)', transition: { duration: 0.32, ease: [0.4, 0, 1, 1] } },
+  initial: { opacity: 0, y: 14 },
+  enter:   { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } },
+  exit:    { opacity: 0, y: -8, transition: { duration: 0.3, ease: [0.4, 0, 1, 1] } },
 }
 
 function Page({ children }) {
@@ -70,6 +76,11 @@ export default function App() {
               <Route path="/operator"         element={<Page><Operator /></Page>} />
               <Route path="/wishlist"         element={<Page><Wishlist /></Page>} />
               <Route path="/admin"            element={<Page><Admin /></Page>} />
+              <Route path="/profile"          element={<Page><Profile /></Page>} />
+              <Route path="/developers"       element={<Page><Developers /></Page>} />
+              <Route path="/map"              element={<Page><MapPage /></Page>} />
+              <Route path="/sos"              element={<Page><Sos /></Page>} />
+              <Route path="/budget"           element={<Page><Budget /></Page>} />
               <Route path="/pay/return"       element={<Page><PayReturn /></Page>} />
               <Route path="*"                 element={<Page><Home /></Page>} />
             </Routes>
@@ -77,6 +88,7 @@ export default function App() {
           <Footer />
         </div>
         <BottomTabs />
+        <SignInSheet />
       </PackageActionsProvider>
       </ToastHost>
       </WishlistProvider>

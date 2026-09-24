@@ -1,10 +1,12 @@
 import React, { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   ArrowRight, CalendarDays, Coins, Compass, Info, MapPin, Mountain,
-  Check, X as XIcon, Users, Wand2, AlertTriangle, ChevronDown,
+  Check, X as XIcon, Users, Wand2, AlertTriangle, ChevronDown, Sparkles,
 } from 'lucide-react'
+import { useT } from '../lib/i18n'
+import AiPlanner from '../components/AiPlanner'
 
 import { api, pkr, relTime } from '../lib/api'
 import { useData } from '../lib/store'
@@ -35,6 +37,9 @@ const COMPONENT_LABEL = {
 }
 
 export default function Plan() {
+  const t = useT()
+  const [params, setParams] = useSearchParams()
+  const mode = params.get('mode') === 'ai' ? 'ai' : 'compare'
   const d = useData() || {}
 
   const [startCity, setStartCity] = useState('Islamabad')
@@ -81,11 +86,22 @@ export default function Plan() {
       <Reveal>
         <SectionTitle
           eyebrow="Trip planner"
-          title="Tell us the trip. We'll tell you where it works."
+          title={mode === 'ai' ? t('Your trip, planned day by day.') : t("Tell us the trip. We'll tell you where it works.")}
           sub="Every destination is compared against your budget, dates, group and interests — and against the road, weather and incident records as they stand right now. You get the reasons, not a verdict."
         />
       </Reveal>
 
+      <div className="mb-6 inline-flex gap-1 rounded-xl border border-white/[.06] bg-white/[.02] p-1" role="tablist">
+        {[['compare', Compass, t('Compare destinations')], ['ai', Sparkles, t('AI itinerary')]].map(([id, Icon, label]) => (
+          <button key={id} role="tab" aria-selected={mode === id} onClick={() => setParams(id === 'ai' ? { mode: 'ai' } : {}, { replace: true })}
+            className={`relative flex items-center gap-1.5 rounded-lg px-4 py-2 text-[13px] font-semibold transition ${mode === id ? 'text-frost-50' : 'text-frost-400 hover:text-frost-200'}`}>
+            {mode === id && <motion.span layoutId="plan-tab" className="absolute inset-0 rounded-lg bg-white/[.07]" transition={{ duration: 0.4, ease }} />}
+            <span className="relative flex items-center gap-1.5"><Icon className="h-3.5 w-3.5" /> {label}</span>
+          </button>
+        ))}
+      </div>
+
+      {mode === 'ai' ? <AiPlanner /> : (
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
         {/* ------------------------------------------------ the brief */}
         <Reveal delay={0.05}>
@@ -199,6 +215,7 @@ export default function Plan() {
           )}
         </div>
       </div>
+      )}
     </div>
   )
 }

@@ -3,81 +3,121 @@ import { api, setTokenProvider } from './api'
 import * as fb from './firebase'
 
 /**
- * Phone-OTP session state.
+ * Session state: the Firebase user, their Northern Trails profile (role,
+ * operator link, emergency contact, wishlist) and the one sign-in sheet.
  *
- * Firebase is optional: when it is not configured this provider settles
- * immediately with `configured: false` and every consumer renders its
- * signed-out branch. No screen is ever blocked on auth.
+ * `requireAuth(action)` runs `action` straight away when signed in, and
+ * otherwise opens the sign-in sheet and runs it after a successful sign-in —
+ * so "Book now" or the wishlist heart simply carry on where the user was.
  */
 const Ctx = createContext(null)
 export const useAuth = () => useContext(Ctx)
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
+  const [profile, setProfile] = useState(null)
   const [ready, setReady] = useState(!fb.configured)
-  const [pushToken, setPushToken] = useState('')
-  const registered = useRef(false)
+  const [profileError, setProfileError] = useState('')
+  const [sheet, setSheet] = useState({ open: false, reason: '' })
+  const pending = useRef(null)
 
-  // Let the API layer attach a Bearer token without importing Firebase.
   useEffect(() => { setTokenProvider(() => fb.idToken()) }, [])
+
+  const loadProfile = useCallback(async () => {
+    try {
+      const p = await api.me()
+      setProfile(p)
+      setProfileError('')
+      return p
+    } catch (e) {
+      setProfileError(e.message)
+      return null
+    }
+  }, [])
 
   useEffect(() => {
     if (!fb.configured) return undefined
     let unsub = () => {}
     let alive = true
-    fb.onUser((u) => {
+    fb.onUser(async (u) => {
       if (!alive) return
       setUser(u)
+      if (u) await loadProfile()
+      else setProfile(null)
       setReady(true)
     }).then((fn) => { if (typeof fn === 'function') unsub = fn })
     return () => { alive = false; unsub() }
-  }, [])
+  }, [loadProfile])
 
-  // Once signed in, register this device for condition-change pushes.
+  // After sign-in, finish what the user was doing before they were asked.
   useEffect(() => {
-    if (!user || registered.current) return
-    registered.current = true
-    ;(async () => {
-      const token = await fb.requestPushToken()
-      if (!token) return
-      setPushToken(token)
-      try {
-        await api.registerDevice({ token, platform: 'web', watch_routes: [] })
-      } catch (err) {
-        console.warn('device registration failed:', err.message)
-      }
-      // The service worker needs the config to handle background pushes.
-      navigator.serviceWorker?.ready?.then((reg) => {
-        reg.active?.postMessage({
-          type: 'FIREBASE_CONFIG',
-          config: {
-            apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-            projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-            appId: import.meta.env.VITE_FIREBASE_APP_ID,
-            messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-          },
-        })
-      })
-    })()
+    if (user && pending.current) {
+      const fn = pending.current
+      pending.current = null
+      setSheet({ open: false, reason: '' })
+      setTimeout(fn, 250)
+    }
+  }, [user])
+
+  // Reuse an existing notification grant silently; never prompt here.
+  useEffect(() => {
+    if (!user) return
+    fb.requestPushToken({ ask: false }).then((token) => {
+      if (token) api.registerDevice({ token, platform: 'web', watch_routes: [] }).catch(() => {})
+    })
+  }, [user])
+
+  const openSignIn = useCallback((reason = '') => setSheet({ open: true, reason }), [])
+  const closeSignIn = useCallback(() => { pending.current = null; setSheet({ open: false, reason: '' }) }, [])
+
+  const requireAuth = useCallback((action, reason = 'Sign in to continue') => {
+    if (user) { action?.(); return true }
+    pending.current = action || null
+    setSheet({ open: true, reason })
+    return false
   }, [user])
 
   const signOut = useCallback(async () => {
     await fb.signOut()
     setUser(null)
-    registered.current = false
+    setProfile(null)
   }, [])
 
+  /** Ask for notification permission and register this device for alerts. */
+  const enablePush = useCallback(async () => {
+    const token = await fb.requestPushToken({ ask: true })
+    if (!token) return false
+    await api.registerDevice({ token, platform: 'web', watch_routes: [] })
+    return true
+  }, [])
+
+  const role = profile?.role || (user ? 'tourist' : 'guest')
   const value = {
     configured: fb.configured,
     ready,
     user,
-    pushToken,
+    profile,
+    profileError,
+    role,
+    isAdmin: role === 'admin',
+    isOperator: role === 'operator' || role === 'admin',
     signedIn: !!user,
-    phone: user?.phoneNumber || '',
     uid: user?.uid || '',
+    displayName: profile?.name || user?.displayName || user?.email?.split('@')[0] || user?.phoneNumber || '',
+    photoURL: user?.photoURL || '',
+    sheet, openSignIn, closeSignIn, requireAuth,
+    refreshProfile: loadProfile,
+    setProfile,
+    enablePush,
+    signOut,
+    // raw sign-in methods, used by the sheet
     sendOtp: fb.sendOtp,
     confirmCode: fb.confirmCode,
-    signOut,
+    signUpEmail: fb.signUpEmail,
+    signInEmail: fb.signInEmail,
+    signInGoogle: fb.signInGoogle,
+    resetPassword: fb.resetPassword,
+    resendVerification: fb.resendVerification,
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

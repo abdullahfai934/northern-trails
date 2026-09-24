@@ -12,10 +12,20 @@
       "source": "NHA Road Advisory + 3 traveler reports",
       "source_url": "https://nha.gov.pk/road-conditions",
       "confidence": 0.93,
-      "updated_at": "2026-09-23T16:38:07+00:00",
+      "updated_at": "2026-09-23T18:13:03+00:00",
       "traveler_reports": 3,
       "permits": [],
-      "hazards": []
+      "hazards": [],
+      "endpoints": [
+        [
+          35.9208,
+          74.3144
+        ],
+        [
+          36.3167,
+          74.6667
+        ]
+      ]
     },
     {
       "id": "kkh-hunza-khunjerab",
@@ -29,7 +39,7 @@
       "source": "Khunjerab NP control post + OpenWeatherMap",
       "source_url": "https://nha.gov.pk/road-conditions",
       "confidence": 0.88,
-      "updated_at": "2026-09-23T16:14:07+00:00",
+      "updated_at": "2026-09-23T17:49:03+00:00",
       "traveler_reports": 7,
       "permits": [
         "Khunjerab National Park entry fee (PKR 800 local / USD 8 foreign)"
@@ -37,6 +47,16 @@
       "hazards": [
         "Black ice after 16:00",
         "Altitude sickness above 4,000 m"
+      ],
+      "endpoints": [
+        [
+          36.3167,
+          74.6667
+        ],
+        [
+          36.8508,
+          75.4269
+        ]
       ]
     },
     {
@@ -51,12 +71,22 @@
       "source": "GB District Admin (Skardu) announcement + 11 traveler reports",
       "source_url": "https://gilgitbaltistan.gov.pk",
       "confidence": 0.81,
-      "updated_at": "2026-09-23T16:47:07+00:00",
+      "updated_at": "2026-09-23T18:22:03+00:00",
       "traveler_reports": 11,
       "permits": [],
       "hazards": [
         "Rockfall zone km 88–92",
         "No fuel between Jaglot and Thowar"
+      ],
+      "endpoints": [
+        [
+          35.9208,
+          74.3144
+        ],
+        [
+          35.2971,
+          75.6333
+        ]
       ]
     },
     {
@@ -71,7 +101,7 @@
       "source": "Deosai National Park office",
       "source_url": "https://gilgitbaltistan.gov.pk",
       "confidence": 0.9,
-      "updated_at": "2026-09-23T14:56:07+00:00",
+      "updated_at": "2026-09-23T16:31:03+00:00",
       "traveler_reports": 4,
       "permits": [
         "Deosai National Park permit (PKR 500 local / USD 12 foreign)"
@@ -79,6 +109,16 @@
       "hazards": [
         "No mobile coverage for 60 km",
         "Brown bear habitat — do not camp unattended"
+      ],
+      "endpoints": [
+        [
+          35.2971,
+          75.6333
+        ],
+        [
+          35.3667,
+          74.85
+        ]
       ]
     },
     {
@@ -93,12 +133,22 @@
       "source": "NHA Advisory 21-Sep + District Admin Chitral",
       "source_url": "https://nha.gov.pk/road-conditions",
       "confidence": 0.95,
-      "updated_at": "2026-09-23T16:01:07+00:00",
+      "updated_at": "2026-09-23T17:36:03+00:00",
       "traveler_reports": 6,
       "permits": [],
       "hazards": [
         "Causeway washout at Langar",
         "River crossing unsafe"
+      ],
+      "endpoints": [
+        [
+          35.9208,
+          74.3144
+        ],
+        [
+          35.8511,
+          71.7864
+        ]
       ]
     },
     {
@@ -113,7 +163,7 @@
       "source": "Raikot Jeep Union + 9 traveler reports",
       "source_url": "https://gilgitbaltistan.gov.pk",
       "confidence": 0.86,
-      "updated_at": "2026-09-23T16:25:07+00:00",
+      "updated_at": "2026-09-23T18:00:03+00:00",
       "traveler_reports": 9,
       "permits": [
         "Fairy Meadows community fee (PKR 300)"
@@ -121,6 +171,16 @@
       "hazards": [
         "Exposed jeep track, no guard rails",
         "3 km uphill trek after Tato"
+      ],
+      "endpoints": [
+        [
+          35.4333,
+          74.5833
+        ],
+        [
+          35.3878,
+          74.5783
+        ]
       ]
     }
   ],
@@ -136,7 +196,7 @@
         "kkh-hunza-khunjerab"
       ],
       "source": "GB Disaster Management Authority",
-      "issued_at": "2026-09-23T11:56:07+00:00"
+      "issued_at": "2026-09-23T13:31:03+00:00"
     },
     {
       "id": "alert-langar",
@@ -148,7 +208,7 @@
         "shandur-chitral"
       ],
       "source": "NHA Advisory 21-Sep",
-      "issued_at": "2026-09-23T16:01:07+00:00"
+      "issued_at": "2026-09-23T17:36:03+00:00"
     },
     {
       "id": "alert-thowar",
@@ -160,7 +220,7 @@
         "skardu-road"
       ],
       "source": "District Admin Skardu",
-      "issued_at": "2026-09-23T16:47:07+00:00"
+      "issued_at": "2026-09-23T18:22:03+00:00"
     }
   ],
   "weather": [

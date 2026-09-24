@@ -5,7 +5,10 @@ import {
   TrendingUp, Wallet, Star, Inbox,
 } from 'lucide-react'
 
+import { Link } from 'react-router-dom'
 import { useData } from '../lib/store'
+import { useAuth } from '../lib/auth'
+import Guard from '../components/Guard'
 import { api, pkr, wsUrl } from '../lib/api'
 import { closeSocket } from '../lib/socket'
 import { Reveal, SectionTitle, ease, useToast } from '../components/ui'
@@ -13,9 +16,20 @@ import { Reveal, SectionTitle, ease, useToast } from '../components/ui'
 const WINDOW = 45
 
 export default function Operator() {
+  return (
+    <Guard role="operator" reason="Sign in with your operator account to open the console">
+      <Console />
+    </Guard>
+  )
+}
+
+function Console() {
   const d = useData()
+  const auth = useAuth()
   const toast = useToast()
-  const [opId, setOpId] = useState('op-karakoram')
+  // An operator account works its own queue; an admin can look at any.
+  const [opId, setOpId] = useState(() => auth.profile?.operator_id || 'op-karakoram')
+  useEffect(() => { if (auth.role === 'operator' && auth.profile?.operator_id) setOpId(auth.profile.operator_id) }, [auth.role, auth.profile])
   const [online, setOnline] = useState(true)
   const [jobs, setJobs] = useState([])
   const [confirmed, setConfirmed] = useState([])
@@ -124,7 +138,16 @@ export default function Operator() {
         />
       </Reveal>
 
-      {/* operator switcher */}
+      <Reveal delay={0.03}>
+        <div className="mb-4 flex flex-wrap gap-2">
+          <Link to="/admin" className="btn-ghost !px-3.5 !py-2 !text-[12.5px]">Manage packages & bookings</Link>
+          <Link to="/conditions" className="btn-ghost !px-3.5 !py-2 !text-[12.5px]">Update road status</Link>
+          <Link to="/developers" className="btn-ghost !px-3.5 !py-2 !text-[12.5px]">API keys</Link>
+        </div>
+      </Reveal>
+
+      {/* operator switcher (admins only; an operator account is fixed to its own) */}
+      {auth.isAdmin && (
       <Reveal delay={0.05}>
         <div className="mb-6 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
           {d.operators.map((o) => (
@@ -141,6 +164,7 @@ export default function Operator() {
           ))}
         </div>
       </Reveal>
+      )}
 
       {/* stat row */}
       <Reveal delay={0.08}>

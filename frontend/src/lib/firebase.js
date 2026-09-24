@@ -1,5 +1,6 @@
 /**
- * Firebase client: phone-OTP sign-in and FCM push registration.
+ * Firebase client: sign-in (email and password, Google, phone OTP), password
+ * reset, and FCM push registration.
  *
  * Everything here is optional. With no VITE_FIREBASE_* variables the module
  * reports `configured: false`, the UI hides the sign-in screen, and the app
@@ -19,6 +20,23 @@ const cfg = {
 }
 
 export const configured = Boolean(cfg.apiKey && cfg.projectId && cfg.appId)
+
+/**
+ * The one service worker URL (offline cache + push). It carries the public
+ * Firebase web config so the worker can handle background pushes, and a dev
+ * flag that turns its caching off under the Vite dev server. Page load and
+ * push registration must use exactly this URL, or they would replace each
+ * other's worker.
+ */
+export function swUrl() {
+  const q = new URLSearchParams()
+  if (configured) {
+    q.set('apiKey', cfg.apiKey); q.set('projectId', cfg.projectId)
+    q.set('appId', cfg.appId); q.set('messagingSenderId', cfg.messagingSenderId || '')
+  }
+  if (!import.meta.env.PROD) q.set('dev', '1')
+  return '/sw.js?' + q.toString()
+}
 
 let appPromise = null
 
@@ -80,7 +98,47 @@ export async function confirmCode(confirmation, code) {
   return result.user
 }
 
+/* ----------------------------------------------------- email & Google */
+export async function signUpEmail(name, email, password) {
+  const { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } = await import('firebase/auth')
+  const auth = await getAuthInstance()
+  const cred = await createUserWithEmailAndPassword(auth, email, password)
+  if (name) await updateProfile(cred.user, { displayName: name })
+  // Verification unlocks nothing essential, but an unverified address can
+  // never be granted the admin role, so ask for it up front.
+  try { await sendEmailVerification(cred.user) } catch { /* rate-limited: they can resend later */ }
+  await cred.user.getIdToken(true)
+  return cred.user
+}
+
+export async function signInEmail(email, password) {
+  const { signInWithEmailAndPassword } = await import('firebase/auth')
+  const auth = await getAuthInstance()
+  return (await signInWithEmailAndPassword(auth, email, password)).user
+}
+
+export async function signInGoogle() {
+  const { GoogleAuthProvider, signInWithPopup } = await import('firebase/auth')
+  const auth = await getAuthInstance()
+  const provider = new GoogleAuthProvider()
+  provider.setCustomParameters({ prompt: 'select_account' })
+  return (await signInWithPopup(auth, provider)).user
+}
+
+export async function resetPassword(email) {
+  const { sendPasswordResetEmail } = await import('firebase/auth')
+  const auth = await getAuthInstance()
+  await sendPasswordResetEmail(auth, email)
+}
+
+export async function resendVerification() {
+  const { sendEmailVerification } = await import('firebase/auth')
+  const auth = await getAuthInstance()
+  if (auth.currentUser) await sendEmailVerification(auth.currentUser)
+}
+
 export async function signOut() {
+  navigator.serviceWorker?.controller?.postMessage({ type: 'CLEAR_USER_DATA' })
   if (!configured) return
   const { signOut: fbSignOut } = await import('firebase/auth')
   const auth = await getAuthInstance()
@@ -108,17 +166,22 @@ export async function idToken(forceRefresh = false) {
  * Returns '' for every ordinary refusal — unsupported browser, permission
  * denied, no service worker — so callers never need a try/catch.
  */
-export async function requestPushToken() {
-  if (!configured || !import.meta.env.VITE_FIREBASE_VAPID_KEY) return ''
+export async function requestPushToken({ ask = true } = {}) {
+  if (!configured) return ''
   if (!('Notification' in window) || !('serviceWorker' in navigator)) return ''
   try {
     const { getMessaging, getToken, isSupported } = await import('firebase/messaging')
     if (!(await isSupported())) return ''
-    if ((await Notification.requestPermission()) !== 'granted') return ''
-    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
+    // Only prompt when the user asked for alerts; otherwise reuse a grant.
+    if (Notification.permission !== 'granted') {
+      if (!ask || (await Notification.requestPermission()) !== 'granted') return ''
+    }
+    // One service worker (sw.js) serves both offline caching and push.
+    const registration = await navigator.serviceWorker.register(swUrl())
     const app = await getApp()
+    const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY
     return await getToken(getMessaging(app), {
-      vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+      ...(vapidKey ? { vapidKey } : {}),
       serviceWorkerRegistration: registration,
     })
   } catch (err) {

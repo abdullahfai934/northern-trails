@@ -114,11 +114,25 @@ class Identity:
     """Who is calling. `anonymous` when auth is off or no token was sent."""
 
     def __init__(self, uid: str = "", phone: str = "", anonymous: bool = True,
-                 claims: Optional[dict] = None):
+                 claims: Optional[dict] = None, email: str = "", profile: Optional[dict] = None):
         self.uid = uid or "anon"
         self.phone = phone
+        self.email = email
         self.anonymous = anonymous
         self.claims = claims or {}
+        self.profile = profile or {}
+
+    @property
+    def role(self) -> str:
+        return self.profile.get("role", "tourist") if not self.anonymous else "guest"
+
+    @property
+    def operator_id(self) -> str:
+        return self.profile.get("operator_id", "")
+
+    @property
+    def name(self) -> str:
+        return self.profile.get("name") or self.claims.get("name", "")
 
     def __repr__(self) -> str:
         return f"<Identity {self.uid}{' anon' if self.anonymous else ''}>"
@@ -143,16 +157,20 @@ async def current_user(authorization: str = Header(default="")) -> Identity:
         log.warning("token rejected: %s: %s", type(exc).__name__, exc)
         raise HTTPException(401, "Invalid authentication token")
 
-    identity = Identity(
-        uid=claims.get("user_id") or claims["sub"],
-        phone=claims.get("phone_number", ""),
-        anonymous=False,
-        claims=claims,
-    )
+    uid = claims.get("user_id") or claims["sub"]
+    email = claims.get("email", "")
+    from . import profiles
+    # An address only earns the admin role once it is verified: otherwise
+    # anyone could register an admin's email with a password and be promoted.
+    profile = await profiles.get_or_create(
+        uid, email=email, phone=claims.get("phone_number", ""), name=claims.get("name", ""),
+        email_verified=bool(claims.get("email_verified")))
+    identity = Identity(uid=uid, phone=claims.get("phone_number", ""), anonymous=False,
+                        claims=claims, email=email, profile=profile)
     # Keep a local row so bookings and device tokens can reference the user.
     try:
         from .db import repo
-        await repo.upsert_user(identity.uid, identity.phone)
+        await repo.upsert_user(identity.uid, identity.phone, identity.name, identity.role)
     except Exception:
         log.exception("could not persist user row")
     return identity
@@ -161,5 +179,17 @@ async def current_user(authorization: str = Header(default="")) -> Identity:
 async def require_user(user: Identity = Depends(current_user)) -> Identity:
     """Stricter dependency for routes that genuinely need a real account."""
     if user.anonymous:
-        raise HTTPException(401, "Sign in with your phone number to continue")
+        raise HTTPException(401, "Please sign in to continue")
     return user
+
+
+def require_role(*roles: str):
+    """Dependency factory: the caller must be signed in with one of `roles`.
+
+    Admins pass every role check — an admin can do anything an operator can.
+    """
+    async def dep(user: Identity = Depends(require_user)) -> Identity:
+        if user.role != "admin" and user.role not in roles:
+            raise HTTPException(403, f"This needs a {' or '.join(roles)} account")
+        return user
+    return dep

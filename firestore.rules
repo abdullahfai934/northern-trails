@@ -1,0 +1,20 @@
+rules_version = '2';
+// Northern Trails — Firestore security rules.
+//
+// Firestore holds one collection: user profiles (users/{uid}) with the
+// user's role. Only the backend writes to it, using a service account (which
+// bypasses these rules), so a client can never change its own role. A
+// signed-in user may read their own profile and nothing else. Everything
+// else — bookings, reviews, plans, notifications — lives in PostgreSQL behind
+// the API, which scopes every query to the caller's verified uid.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

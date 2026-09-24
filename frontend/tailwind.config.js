@@ -22,10 +22,11 @@ export default {
         frost: { 50: v('frost-50'), 100: v('frost-100'), 200: v('frost-200'), 300: v('frost-300'), 400: v('frost-400') },
         white: v('overlay'),
         abyss: '#070b14',
-        snow: '#ffffff',
-        glacier: { 200: v('glacier-200'), 300: v('glacier-300'), 400: '#38c9d6', 500: '#18aebd', 600: '#0d8c9c' },
+        // Light text over photos. Warm off-white: nothing is pure #FFFFFF.
+        snow: '#EDE8E0',
+        glacier: { 200: v('glacier-200'), 300: v('glacier-300'), 400: v('glacier-400'), 500: v('glacier-500'), 600: v('glacier-600') },
         saffron: { 300: v('saffron-300'), 500: '#f59e0b' },
-        amberz: { 100: v('amberz-100'), 200: v('amberz-200'), 300: v('amberz-300'), 400: '#f5b73d', 500: '#e29a15' },
+        amberz: { 100: v('amberz-100'), 200: v('amberz-200'), 300: v('amberz-300'), 400: v('amberz-400'), 500: v('amberz-500') },
         rose: { 200: v('rose-200'), 300: v('rose-300'), 400: '#fb7185', 500: '#f43f5e' },
         emerald: { 300: v('emerald-300') },
         sky: { 300: v('sky-300') },
@@ -33,12 +34,13 @@ export default {
       },
       fontFamily: {
         display: ['Poppins', 'Inter', 'system-ui', 'sans-serif'],
+        serif: ['"Playfair Display"', 'Georgia', 'serif'],
         sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
       },
       boxShadow: {
         lift: '0 24px 60px -24px rgb(var(--shadow) / .85)',
-        glow: '0 0 0 1px rgba(126,224,230,.18), 0 20px 60px -30px rgba(56,201,214,.65)',
+        glow: '0 0 0 1px rgba(108,196,192,.16), 0 22px 60px -30px rgba(108,196,192,.45)',
       },
       backgroundImage: {
         aurora: 'radial-gradient(60% 55% at 20% 0%, rgba(56,201,214,.22), transparent 60%), radial-gradient(45% 45% at 85% 10%, rgba(245,183,61,.16), transparent 60%), radial-gradient(60% 60% at 60% 100%, rgba(99,102,241,.18), transparent 65%)',

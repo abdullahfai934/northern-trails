@@ -19,7 +19,7 @@ answers only from the app's own live data.
 2. [Features](#features)
 3. [Architecture](#architecture)
 4. [How the key features work](#how-the-key-features-work)
-5. [Design system](#design-system)
+5. [Design system](#design-system) · [Screenshots](#screenshots)
 6. [API reference](#api-reference)
 7. [Running locally](#running-locally)
 8. [Environment variables](#environment-variables)
@@ -43,60 +43,89 @@ information or to compare operators transparently.
 
 | Area | What the traveler gets | Where |
 |---|---|---|
-| **Tour packages** | Cards with a real destination photo, title, duration, PKR price, rating, operator and a highlight line. Actions: *View details* (modal with day-by-day itinerary, inclusions, exclusions and a photo gallery), *Book now*, *Visit operator website*, *Contact on WhatsApp* (pre-filled message), *Save to wishlist* and *Share* | `/explore`, home carousel |
-| **Infinite carousel** | Featured packages drift continuously; pauses on hover or focus, drag or swipe on mobile, arrow buttons, respects reduced-motion | `/` |
-| **Booking** | Validated form (name, phone, email, date, group size, notes) → booking stored in PostgreSQL as `pending_payment` → signed payment callback confirms it. Route warnings attached at booking time | from any card or detail page |
-| **Package admin** | Token-protected form: name, destination, operator, price, duration, day-by-day itinerary, inclusions/exclusions, operator website URL, WhatsApp number, image upload or URLs. Edit and delete | `/admin` |
-| **Nearby restaurants** | Leaflet map plus a list: name, cuisine, distance, phone/website when known, and a *Get directions* button that opens Google Maps | each package page |
-| **Wishlist** | Heart any package; saved per browser with a live count in the header | `/wishlist` |
-| **AI assistant** | Answers from live roads, weather, earthquakes/hazards, packages, prices and restaurants. Says "the road to X is closed — consider Y instead", refuses to invent packages or prices, says plainly when a place (e.g. Naran) is not covered. Typing indicator, retry on error, history kept across reloads | `/assistant` |
-| **Live conditions** | Road status, weather (Open-Meteo, optionally cross-checked by OpenWeatherMap), USGS earthquakes, GDACS hazards, PMD advisories, each with source and timestamp | `/conditions` |
-| **Trip planner** | Compares every destination against budget, days, group, interests and date, with a transparent Travel Condition Score | `/plan` |
-| **Instant match** | Request a jeep, guide or transfer; nearby operators bid over WebSockets; accept and track | `/instant`, `/operator` |
-| **Design** | Photo hero, glass cards, Poppins + Inter, light/dark toggle (follows the OS until chosen), scroll reveals, hover lift, animated counters, page transitions, skeleton loaders, fully responsive | everywhere |
+| **Accounts** | Email/password (with verification and password reset), Google, and phone OTP sign-in. Roles — tourist, operator, admin — kept in Firestore; the avatar menu opens My profile, My bookings, Wishlist and, for staff, the console and dashboard. Clear error messages ("Wrong email or password", "An account already uses this email") | header, everywhere |
+| **Tour packages** | Cards with a real destination photo, title, duration, PKR price, rating, operator and a highlight line. *View details* (itinerary, inclusions, exclusions, gallery), *Book now*, *Visit operator website*, *Contact on WhatsApp*, *Save to wishlist*, *Share* | `/explore`, home carousel |
+| **Infinite carousel** | Drifts continuously; pauses on hover or focus; drag, swipe and arrow buttons; respects reduced motion | `/` |
+| **Booking** | Sign-in required; validated form pre-filled from the profile → stored in PostgreSQL → signed payment callback confirms it | any card |
+| **Destination Safety Score** | 0–100 per destination from road status (35), weather (30), earthquakes within 100 km (20) and altitude (15); animated green/yellow/red gauge with the reason | package pages, planner, home |
+| **Best places this week** | Destinations ranked by safety, forecast dry days and season | home |
+| **Smart alerts** | For upcoming bookings: route closed/restricted, severe weather forecast, M4.5+ earthquake within 100 km. Checked every 3 hours; in-app + browser push (FCM); email when SMTP is set. Each alert sent once | profile → Alerts |
+| **AI trip planner** | Days, budget, group, start city, interests → a day-by-day itinerary using only real packages, restaurants and destinations; costs computed from the catalogue. Edit, save, download as PDF | `/plan?mode=ai` |
+| **Budget calculator** | Car / jeep / coaster, fuel (real OSRM road distance), hotels, food, permit fees from the route records, guide — as a donut chart with a table | `/budget` |
+| **Interactive map** | Leaflet: destinations, packages, road status on real road shapes, recent earthquakes, and restaurants, hotels, hospitals, petrol pumps and police from OpenStreetMap, each a toggle | `/map` |
+| **Emergency SOS** | One tap to Rescue 1122, Police 15, Edhi 115; nearest hospitals and police stations with call and directions; share live GPS location on WhatsApp with the saved emergency contact; works offline | `/sos` |
+| **Reviews** | After a completed trip: 1–5 stars for the trip and the guide, text and up to 4 photos; admin approves before they appear and count towards the rating | package pages, profile |
+| **Nearby restaurants** | Map and list with cuisine, distance and Google Maps directions | package pages |
+| **AI assistant** | Grounded in live roads, weather, earthquakes, packages, prices and restaurants; "road to X is closed — consider Y instead"; never invents a package or price | `/assistant` |
+| **Developer API** | Public REST API with interactive docs and a live *Try it*; operators create API keys (600 req/min vs 60 anonymous) | `/developers` |
+| **Admin dashboard** | Charts (bookings and revenue per month, popular destinations, rating spread, active users) and management of packages, bookings, reviews, road status, users/roles and operators | `/admin` |
+| **Operator console** | Operator role only: job queue, bids, availability, own packages and bookings, road-status updates with "last updated by" | `/operator`, `/conditions` |
+| **Profile** | Bookings, wishlist, saved plans, reviews, alerts, emergency contact, notification settings | `/profile` |
+| **Offline (PWA)** | Installable; opens without signal; keeps booked trips, live data, the last map area and photos cached | phone home screen |
+| **English / اردو** | Language toggle with right-to-left layout (i18next) | header |
+| **Design** | Photo hero slideshow with Ken Burns and word-by-word headline, glass cards, softened teal/gold, light/dark toggle, scroll reveals, count-ups, shine on primary buttons, skeleton loaders | everywhere |
+
+### Screenshots
+
+| | |
+|---|---|
+| ![Home](docs/screenshots/home.jpg) Home — photo hero | ![Explore](docs/screenshots/explore.jpg) Explore packages |
+| ![Package](docs/screenshots/package.jpg) Package page | ![AI planner](docs/screenshots/ai-planner.jpg) AI trip planner (light theme) |
+| ![Map](docs/screenshots/map.jpg) Interactive map | ![Budget](docs/screenshots/budget.jpg) Budget calculator |
+| ![Admin](docs/screenshots/admin.jpg) Admin dashboard (light theme) | ![Developers](docs/screenshots/developers.jpg) Developer API |
+| ![SOS](docs/screenshots/sos.jpg) Emergency SOS | ![Urdu](docs/screenshots/urdu.jpg) Urdu, right-to-left |
+| ![Conditions](docs/screenshots/conditions.jpg) Live conditions | ![Mobile](docs/screenshots/mobile-home.jpg) Mobile |
 
 ---
 
 ## Architecture
 
 ```
-┌──────────────────── React SPA (Vite · Tailwind · Framer Motion · Leaflet) ────────────────────┐
-│  Home  Explore  Package  Plan  Instant  Conditions  Assistant  Operator  Wishlist  Admin      │
-│  lib/store     bootstrap + background retry, snapshot while the API wakes                    │
-│  lib/photos    photo lookup → API → Wikimedia direct → gradient placeholder (cached 7 days)   │
-│  lib/places    restaurants → API → Overpass direct                                            │
-└──────┬──────────────────────────────────────┬─────────────────────────────────────────────────┘
-       │ REST /api/*                          │ WebSocket /ws/traveler/:id, /ws/operator/:id
-┌──────▼──────────────────────────────────────▼─────────────────────────────────────────────────┐
-│                                FastAPI (backend/app)                                          │
-│  main.py        REST surface, validation, SPA hosting, socket endpoints                       │
-│  assistant.py   retrieve → context pack (roads, weather, alerts, packages, restaurants,       │
-│                 alternatives) → Gemini or offline composer → citations                        │
-│  photos.py      Unsplash (key) → Wikimedia Commons, credited, cached 24 h                     │
-│  places.py      Google Places (key) → OpenStreetMap Overpass, widening radius, cached 12 h    │
-│  admin.py       token-guarded package CRUD + image upload                                     │
-│  planner.py     Travel Condition Score and destination comparison                             │
-│  matching.py    dispatch hub: fan-out, response window, offers, tracking                      │
-│  sources/       scheduled pollers → Open-Meteo, OpenWeatherMap, GDACS, USGS, PMD, NHA         │
-│  payments/      JazzCash · Easypaisa · sandbox behind one interface                           │
-│  db/            PostgreSQL + PostGIS models, idempotent migrations, seeding, spatial queries  │
-└──────┬────────────────────────────────────────────────────────────────────────────────────────┘
-       │
-┌──────▼───────────────────────────────────┐   ┌───────────────────────────────────────────────┐
-│ PostgreSQL 16 + PostGIS 3.4              │   │ External: Gemini · Open-Meteo · USGS · GDACS  │
-│ bookings, payments, packages, images,    │   │ Wikimedia · Unsplash · Overpass · Google      │
-│ trips, users, devices, spatial columns   │   │ Places · OSRM · Firebase Auth/FCM             │
-└──────────────────────────────────────────┘   └───────────────────────────────────────────────┘
+┌─────────────────── React SPA on Firebase Hosting (Vite · Tailwind · Framer Motion · Leaflet) ───────────────────┐
+│  Home Explore Package Plan/AI Budget Map SOS Instant Conditions Assistant Profile Developers Admin Operator     │
+│  lib/auth      Firebase Auth (email, Google, phone) → ID token on every API call; role from /api/me            │
+│  lib/store     bootstrap + background retry        lib/i18n   English / Urdu (RTL)                             │
+│  public/sw.js  offline cache + FCM push             lib/pdf    trip plan → PDF (jsPDF)                          │
+└──────┬─────────────────────────────────────────┬──────────────────────────────────────────────────────────────────┘
+       │ HTTPS /api/*   (Bearer ID token)         │ WebSocket /ws/traveler/:id, /ws/operator/:id
+┌──────▼─────────────────────────────────────────▼──────────────────────────────────────────────────────────────────┐
+│                          FastAPI in Docker on Hugging Face Spaces (backend/app)                                 │
+│  auth.py/profiles.py   verify token → Firestore profile → role (tourist · operator · admin)                    │
+│  accounts.py           /api/me, bookings, wishlist, notifications, reviews                                      │
+│  dashboard.py          stats, bookings, review moderation, users/roles, road status, operators                  │
+│  devapi.py             public API rate limits (60 / 600 per min) and operator API keys                           │
+│  safety.py             Safety Score and weekly recommendations      alerts.py   3-hourly smart-alert checker     │
+│  tripai.py             AI itinerary from real records               assistant.py grounded chat                   │
+│  photos.py places.py   Unsplash/Wikimedia photos · Google/Overpass restaurants and POIs                         │
+│  matching.py sources/ payments/ db/   dispatch · live pollers · JazzCash/Easypaisa/sandbox · SQLAlchemy+PostGIS  │
+└──────┬──────────────────────────────┬────────────────────────────────────────┬────────────────────────────────────┘
+       │                              │                                        │
+┌──────▼────────────────────┐  ┌──────▼─────────────────────────┐  ┌────────────▼───────────────────────────────────┐
+│ Neon PostgreSQL + PostGIS │  │ Firestore  users/{uid}          │  │ Gemini · Open-Meteo · USGS · GDACS · PMD · OSRM │
+│ bookings, payments,       │  │ role, operator link, wishlist,  │  │ Wikimedia · Unsplash · Overpass · Google Places │
+│ packages, images, reviews,│  │ emergency contact               │  │ Firebase Auth · FCM                             │
+│ plans, notifications, keys│  │ (clients read own doc only)     │  │                                                 │
+└───────────────────────────┘  └─────────────────────────────────┘  └─────────────────────────────────────────────────┘
 ```
 
-**Hosting.** The SPA is served by Firebase Hosting. The API runs as a Docker web service
-(Render blueprint in `render.yaml`) with PostgreSQL + PostGIS (Neon or any Postgres 16).
-The SPA is built with `VITE_API_BASE` pointing at the API.
+**Hosting.** The SPA is on Firebase Hosting; the API is a Docker container on a free Hugging
+Face Space; data is in Neon (PostgreSQL + PostGIS) and user profiles in Firestore. The SPA is
+built with `VITE_API_BASE` pointing at the Space.
 
-**Keys stay on the server.** Every secret — Gemini, Unsplash, Google Places, payment
-credentials, the admin token — is read by the backend from environment variables. The
-browser only ever receives results. The `VITE_*` variables are public by design (Firebase
-web config and the API URL) and contain no secrets.
+**Why not Cloud Functions?** They need the Firebase Blaze (pay-as-you-go) plan with a card.
+The same FastAPI backend runs unchanged in a container, which also keeps the WebSocket
+matching and the scheduled alert checker (a Function would need Cloud Scheduler).
+
+**Keys stay on the server.** Gemini, Unsplash, Google Places, the Firebase service account,
+payment credentials and the admin token are environment secrets on the Space. The browser
+only receives results. `VITE_*` variables are public by design (Firebase web config and the
+API URL).
+
+**Security rules.** `firestore.rules` lets a signed-in user read only their own
+`users/{uid}` document and write nothing; the role field is written by the backend alone, so
+nobody can promote themselves. Every API route that reads personal data filters by the uid
+in the verified token, never by an id from the request. A verified email is required before
+an address in `ADMIN_EMAILS` is granted admin.
 
 ### Fallback-first
 
@@ -189,21 +218,47 @@ Examples, verified in `tests/test_listings.py`:
 
 ### Package admin
 
-`/admin` asks for `ADMIN_TOKEN`, which the server checks with a constant-time comparison.
-The token is kept for the browser tab only, never in the bundle. With no token configured,
-the admin API answers 503, so a fresh deploy is never open.
+Operators and admins manage packages from the dashboard; an operator can only touch its own
+operator's packages. `ADMIN_TOKEN` (header `X-Admin-Token`) still works for scripts.
 
-- Validation runs in the browser and again on the server (pydantic). Rules include: known
-  destination and operator, PKR 1,000–5,000,000, 1–30 days, one titled itinerary day per
-  day, `https://` operator URL, WhatsApp number normalised to wa.me format (`0300-1234567`
-  → `923001234567`), and at most 8 images.
-- Images are resized in the browser to 1600 px, uploaded, checked by magic bytes (not
-  filename) and stored **in the database** as `package_images` rows. A container's disk is
-  wiped on every deploy; a row is not. They are served at `/api/images/{id}` with immutable
-  caching.
-- New packages start at rating 0 ("New"), because ratings come from travelers, not the form.
-- Sample (seeded) packages can be edited but not deleted. A package that already has
-  bookings is archived instead of deleted, so booking history still resolves.
+- Validation runs in the browser and again on the server (pydantic): known destination and
+  operator, PKR 1,000–5,000,000, 1–30 days, one titled itinerary day per day, `https://`
+  operator URL, WhatsApp number normalised to wa.me format, at most 8 images.
+- Images are resized in the browser to 1600 px, checked by magic bytes and stored **in the
+  database** (`package_images`) — a container's disk is wiped on every deploy; a row is not.
+- New packages start at rating 0 ("New"); ratings come from approved reviews.
+
+### Accounts and roles
+
+Sign-in is Firebase Authentication in the browser; every API call carries the ID token,
+which the backend verifies against Google's certificates. On first sign-in the backend creates
+`users/{uid}` in Firestore as a **tourist**. Addresses listed in `ADMIN_EMAILS` become
+**admin** once verified; admins promote **operators** (and link them to an operator) from
+Users. Protected pages show a sign-in prompt, and an action such as *Book now* resumes after
+signing in.
+
+### Safety Score, alerts and the AI planner
+
+- **Safety Score** (`safety.py`): four parts with fixed maximums — road 35 (worst segment),
+  weather 30 (storms, snow, rain, wind, cold, visibility over four days), earthquakes 20 (USGS,
+  within 100 km, last 7 days: M5.5+ → 0, M4.5+ → 8), altitude 15. A closed road caps the
+  score at 45. 75+ is green, 50–74 yellow, below 50 red.
+- **Smart alerts** (`alerts.py`): every `ALERT_CHECK_HOURS` (3) for bookings starting within
+  three weeks or in progress. Stored in `notifications` with a unique (user, cause) key, so a
+  closure is announced once; pushed to the user's devices and emailed if SMTP is configured.
+- **AI planner** (`tripai.py`): the destination planner ranks destinations; their packages,
+  attractions, restaurants and safety scores become the prompt context; Gemini returns JSON.
+  The result is validated — unknown package ids, restaurants and places are dropped — and
+  every cost is recalculated from catalogue prices and published daily ground costs. Without
+  Gemini, a deterministic builder produces the plan from the same records.
+
+### Developer API
+
+`GET /api/packages`, `/api/packages/{id}`, `/api/destinations`, `/api/conditions/{destination}`
+(weather + earthquakes + roads + safety) and `/api/restaurants?lat=&lng=`. Anonymous callers get
+60 requests a minute per IP; an operator's key (`X-API-Key`) 600 a minute per key. Responses
+carry `X-RateLimit-*` headers; over the limit is 429 with `Retry-After`. Only a key's SHA-256
+is stored.
 
 ### Booking and validation
 
@@ -267,6 +322,15 @@ Interactive docs at `/api/docs`. The main endpoints:
 | GET | `/api/admin/status` · POST `/api/admin/verify` | Is admin enabled · check a token |
 | POST/PUT/DELETE | `/api/admin/packages[/{id}]` | Package CRUD (`X-Admin-Token`) |
 | POST | `/api/admin/images` · GET `/api/images/{id}` | Upload (JPEG/PNG/WebP, ≤ 3 MB) · serve |
+| GET | `/api/conditions/{destination}` · `/api/restaurants?lat=&lng=` | Public API: combined conditions · restaurants by point |
+| GET | `/api/safety` · `/api/recommendations` | Safety Scores · best places this week |
+| GET | `/api/places/pois?kind=&lat=&lng=` | Hospitals, petrol pumps, police, hotels |
+| GET/PATCH | `/api/me` · GET `/api/me/bookings` · PUT `/api/me/wishlist` | Profile, bookings, wishlist |
+| GET | `/api/me/notifications` · POST `/api/me/notifications/read` | Smart alerts |
+| POST | `/api/plan/ai` · GET/POST/DELETE `/api/me/plans` | AI itinerary · saved plans |
+| POST | `/api/reviews` · GET `/api/packages/{id}/reviews` | Write a review · approved reviews |
+| GET/POST/DELETE | `/api/developer/keys` | Operator API keys |
+| GET/PATCH | `/api/admin/stats` `bookings` `reviews` `users` `routes/{id}` `operators/{id}` | Dashboard |
 
 ---
 
@@ -309,12 +373,15 @@ feeds both the API and the Vite build.
 |---|---|---|
 | `DATABASE_URL` | PostgreSQL + PostGIS | in-memory; bookings and admin packages reset on restart |
 | `GEMINI_API_KEY`, `GEMINI_MODEL` | assistant phrasing | deterministic grounded composer |
-| `ADMIN_TOKEN` | `/admin` package screen | admin switched off (503) |
+| `ADMIN_TOKEN` | package API for scripts (`X-Admin-Token`) | scripts must sign in instead |
 | `UNSPLASH_ACCESS_KEY` | destination photos | Wikimedia Commons |
 | `GOOGLE_PLACES_API_KEY` | restaurants | OpenStreetMap / Overpass |
 | `OPENWEATHER_API_KEY` | second weather opinion | Open-Meteo only |
-| `FIREBASE_PROJECT_ID`, `VITE_FIREBASE_*` | phone OTP sign-in | sign-in hidden |
-| `FCM_SERVICE_ACCOUNT_JSON`, `VITE_FIREBASE_VAPID_KEY` | push notifications | push disabled |
+| `FIREBASE_PROJECT_ID`, `VITE_FIREBASE_*` | sign-in (email, Google, phone) | sign-in hidden |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | Firestore profiles/roles and FCM push (file path or raw JSON) | profiles in memory, no push |
+| `ADMIN_EMAILS` | verified emails made admin on sign-in | promote admins by hand |
+| `SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | alert emails | alerts in-app and push only |
+| `ALERT_CHECK_HOURS` | how often smart alerts run (default 3) | — |
 | `PAYMENTS_PROVIDER`, `JAZZCASH_*`, `EASYPAISA_*` | real payments | sandbox gateway |
 | `CORS_ORIGINS` | browser origins allowed to call the API | `*` |
 | `VITE_API_BASE` | where the SPA finds the API (build time) | same origin |
@@ -323,50 +390,43 @@ feeds both the API and the Vite build.
 
 ## Deployment
 
-The live setup needs nothing running on a personal machine.
+Nothing runs on a personal machine once deployed.
 
-**1. Database.** Create a free PostgreSQL project on [Neon](https://neon.tech) (it does not
-expire), run `CREATE EXTENSION postgis;` once, and copy the connection string. Tables and
-seed data are created on first boot; later column additions are applied by idempotent
-migrations in `db/session.py`.
+1. **Database** — a free [Neon](https://neon.tech) PostgreSQL project; paste its *direct*
+   connection string as `DATABASE_URL` (not the `-pooler` one: asyncpg's prepared statements
+   do not survive PgBouncer). PostGIS, tables, seed data and later column additions are all
+   created on boot.
+2. **Firebase** — Authentication with Email/Password, Google and Phone switched on; Firestore
+   in `asia-south1`; `firebase deploy --only firestore:rules`; a service-account key for the
+   backend (`GOOGLE_SERVICE_ACCOUNT_JSON`).
+3. **API on Hugging Face Spaces** —
+   ```bash
+   HF_TOKEN=hf_… backend/.venv/bin/python scripts/deploy_hf.py
+   ```
+   creates the Docker Space, uploads the backend, sets every secret from `.env` and waits for
+   `/api/health`.
+4. **Frontend** —
+   ```bash
+   ./scripts/deploy-web.sh https://<user>-northern-trails-api.hf.space
+   ```
+   builds the SPA against that API and deploys it to `northern-trails-fyp.web.app`.
 
-**2. API on Render.** Render dashboard → **New → Blueprint** → this repository. `render.yaml`
-defines the Docker web service. Paste `DATABASE_URL`, `GEMINI_API_KEY` and any optional keys
-when prompted. `ADMIN_TOKEN` is generated for you; read it from the service's
-**Environment** tab. Check `https://<service>.onrender.com/api/health`.
-
-**3. Frontend on Firebase Hosting.**
-
-```bash
-./scripts/deploy-web.sh https://<service>.onrender.com
-```
-
-This builds the SPA against that API and deploys to `northern-trails-fyp.web.app`. Run it
-again only if the API URL changes.
-
-**Free-tier note.** A free Render instance sleeps after 15 minutes idle and takes up to a
-minute to wake. The site stays usable meanwhile — it shows the snapshot with live weather
-and earthquakes and swaps in live data when the API answers — but to avoid the wait, point
-a free uptime monitor (e.g. UptimeRobot) at `/api/health` every 10 minutes.
-
-**Alternative for a quick demo:** `./scripts/golive.sh` exposes the API on this machine
-through a Cloudflare quick tunnel and deploys the SPA against it. It only lives while the
-machine and the tunnel do, and the URL changes on every restart.
-
-The same Docker image also serves the built SPA itself, so the Render URL alone is a
-complete deployment too (`docker compose up` runs the same thing locally).
+A free Space sleeps after 48 hours without visits and wakes on the next request (the site
+shows its snapshot with live weather while it wakes). `render.yaml` and `scripts/golive.sh`
+(a Cloudflare tunnel to this machine) remain as alternatives.
 
 ---
 
 ## Testing and quality
 
 ```bash
-cd backend && .venv/bin/python -m pytest     # 155 tests, no network, no database needed
+cd backend && .venv/bin/python -m pytest     # 180 tests, no network, no database needed
 ```
 
 | File | Covers |
 |---|---|
 | `test_listings.py` | photo filtering/credits/fallback, restaurant sorting/radius widening/rate-limit retry, admin auth + CRUD + validation + image byte checks, booking validation, assistant alternatives / not-covered / no invented prices / restaurant answers |
+| `test_accounts.py` | sign-in required for booking, booking privacy, roles only settable by admins, verified-email admin rule, operator scoping, review lifecycle and moderation, API keys and rate limits, conditions/restaurants API, Safety Score parts and caps, smart alerts sent once, operator road updates, AI planner rejecting invented records, dashboard stats |
 | `test_planner.py` | Travel Condition Score components, weights and destination fit |
 | `test_api.py` | region guard, booking lifecycle, double payment, grounded citations |
 | `test_payments.py` | JazzCash/Easypaisa signing, forged-callback rejection |
@@ -384,8 +444,13 @@ overflow collected: **zero issues**. A scripted end-to-end run covers:
 - wishlist count and page, share-to-clipboard, and the theme toggle
 - restaurant directions links
 - the assistant: typing indicator, grounded answer, and history kept across a reload
-- admin: wrong-token rejection, validation, publish, the new card's WhatsApp and website
-  links, and delete
+- admin: validation, publish, the new card's WhatsApp and website links, and delete
+- signed in, against the real Firebase project and database: sign-up validation, wrong
+  password message, sign out and back in, wishlist on the account, booking pre-filled from
+  the profile and listed in My bookings, emergency contact, AI plan built, saved and
+  downloaded as PDF, developer *Try it*, budget road distance, map layers, SOS location,
+  Urdu RTL, admin charts and booking status, review submitted and moderated, operator
+  console, API key raising the limit to 600/min, road-status editor
 
 ---
 
@@ -561,16 +626,19 @@ sandbox runs the identical flow.
 
 ## Known limitations
 
-- **Sample operators.** The five seeded operators and their registration numbers are sample
-  data for the prototype. They deliberately have no website or WhatsApp number: a made-up
-  URL or phone number would send a traveler to a real stranger. Those two buttons appear as
-  soon as a package has them, which is what the admin screen is for.
-- **Road status.** NHA blocks automated requests, so road statuses come from the seeded
-  baseline plus PMD, GDACS and USGS signals (see above). Each carries its source and time.
-- **Restaurant coverage** is only as good as OpenStreetMap (or Google Places with a key).
-  Remote areas such as the Deosai plains have none mapped, and the app says so.
-- **Free hosting sleeps** after idle. See the deployment note on keeping it warm.
-- **Wishlist** is stored per browser, not per account.
+- **Sample operators.** The seeded operators are sample data; they have no website or
+  WhatsApp number (a made-up one would reach a real stranger). Those buttons appear once a
+  package has them.
+- **Phone OTP** texts real numbers only on the Firebase Blaze plan; on the free plan the test
+  numbers configured in the console work (e.g. `+92 300 1234567`, code `123456`). Email and
+  Google sign-in are unaffected.
+- **Road status** is set by operators and admins (NHA blocks automated access); each road
+  shows who updated it and when, alongside PMD, GDACS and USGS signals.
+- **Alert emails** need an SMTP account (`SMTP_*`); without one alerts arrive in-app and by push.
+- **Restaurant and POI coverage** is only as good as OpenStreetMap (or Google Places with a key).
+- **Emergency numbers** listed are the national ones (1122, 15, 115); tourist-police
+  stations come from OpenStreetMap rather than a hand-typed list.
+- **PDF export** is in English (the built-in PDF fonts have no Urdu glyphs).
 
 ## Credits and data licences
 

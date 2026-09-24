@@ -11,10 +11,13 @@
   "dependencies": {
     "firebase": "^11.1.0",
     "framer-motion": "^11.11.17",
+    "i18next": "^23.16.8",
+    "jspdf": "^2.5.2",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.454.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-i18next": "^15.1.4",
     "react-leaflet": "^4.2.1",
     "react-router-dom": "^6.27.0"
   },

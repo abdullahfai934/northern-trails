@@ -12,60 +12,21 @@ request path depends on a push succeeding.
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
-import pathlib
 
 import httpx
 
-from .config import FCM_SERVICE_ACCOUNT
+from . import gcp
 
 log = logging.getLogger("northern_trails.push")
 
-SCOPE = "https://www.googleapis.com/auth/firebase.messaging"
-_credentials = None
-_project_id = ""
-
 
 def enabled() -> bool:
-    return bool(FCM_SERVICE_ACCOUNT)
-
-
-def _load_service_account() -> dict | None:
-    """FCM_SERVICE_ACCOUNT_JSON may be a file path or the raw JSON itself."""
-    raw = FCM_SERVICE_ACCOUNT.strip()
-    if not raw:
-        return None
-    if raw.startswith("{"):
-        return json.loads(raw)
-    path = pathlib.Path(raw)
-    if not path.is_file():
-        log.error("FCM service account file not found: %s", path)
-        return None
-    return json.loads(path.read_text())
-
-
-def _creds():
-    global _credentials, _project_id
-    if _credentials is None:
-        info = _load_service_account()
-        if not info:
-            return None, ""
-        from google.oauth2 import service_account
-        _credentials = service_account.Credentials.from_service_account_info(
-            info, scopes=[SCOPE])
-        _project_id = info.get("project_id", "")
-    return _credentials, _project_id
+    return gcp.enabled()
 
 
 def _access_token() -> tuple[str, str]:
-    creds, project = _creds()
-    if not creds:
-        return "", ""
-    if not creds.valid:
-        from google.auth.transport.requests import Request
-        creds.refresh(Request())
-    return creds.token, project
+    return gcp.access_token(), gcp.project_id()
 
 
 async def send(tokens: list[str], title: str, body: str,

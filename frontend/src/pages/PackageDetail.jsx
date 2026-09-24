@@ -7,14 +7,15 @@ import {
   MessageCircle, ExternalLink,
 } from 'lucide-react'
 
-import { api, pkr, relTime, whatsappUrl } from '../lib/api'
+import { api, assetUrl, pkr, relTime, whatsappUrl } from '../lib/api'
 import { useData } from '../lib/store'
 import { useWishlist } from '../lib/wishlist'
-import { Scene, sceneFor } from '../lib/scenes'
 import PlacePhoto from '../components/PlacePhoto'
 import Restaurants from '../components/Restaurants'
 import { Gallery, sharePackage, usePackageActions } from '../components/PackageActions'
-import { Reveal, Skeleton, StatusPill, Stars, ease, useToast } from '../components/ui'
+import { ErrorState, Reveal, Skeleton, StatusPill, Stars, ease, useToast } from '../components/ui'
+import { SafetyGauge } from '../components/charts'
+import { useT } from '../lib/i18n'
 
 export default function PackageDetail() {
   const { id } = useParams()
@@ -85,7 +86,7 @@ export default function PackageDetail() {
       {/* hero */}
       <div className="on-photo relative h-[56vh] min-h-[360px] overflow-hidden bg-abyss">
         <motion.div style={{ y: heroY }} className="absolute inset-0 scale-110">
-          <Scene name={sceneFor(pkg)} className="absolute inset-0 h-full w-full" />
+          <div className="absolute inset-0 bg-gradient-to-br from-ink-800 via-abyss to-abyss" />
           <PlacePhoto query={pkg.photo_query || pkg.destination} name={pkg.destination} images={pkg.images}
                       large eager className="absolute inset-0 h-full w-full" imgClassName="animate-kenburns" />
         </motion.div>
@@ -122,6 +123,9 @@ export default function PackageDetail() {
             <h2 className="mb-4 text-[11px] font-bold uppercase tracking-[.18em] text-frost-400">Photos</h2>
             <div className="glass overflow-hidden rounded-2xl"><Gallery pkg={pkg} /></div>
           </Reveal>
+
+          {/* safety score */}
+          {dest?.id && <SafetyCard destId={dest.id} name={dest.name} />}
 
           {/* live conditions on this route */}
           {pkg.route_conditions?.length > 0 && (
@@ -209,6 +213,9 @@ export default function PackageDetail() {
             </Reveal>
           )}
 
+          {/* traveler reviews */}
+          <Reveal><PackageReviews packageId={pkg.id} /></Reveal>
+
           {/* operator verification */}
           <Reveal>
             <div className="glass rounded-2xl p-6">
@@ -267,7 +274,7 @@ export default function PackageDetail() {
 
               <button onClick={() => actions.openBooking(pkg)} className="btn-primary mt-6 w-full">Book now</button>
               <div className="mt-2 grid grid-cols-2 gap-2">
-                <button onClick={() => toast(wish.toggle(pkg.id) ? 'Saved to your wishlist' : 'Removed from your wishlist')}
+                <button onClick={() => { const r = wish.toggle(pkg.id); if (r !== null) toast(r ? 'Saved to your wishlist' : 'Removed from your wishlist') }}
                   aria-pressed={saved}
                   className={`btn-ghost !px-3 !py-2.5 !text-[12.5px] ${saved ? '!border-rose-400/40 !text-rose-300' : ''}`}>
                   <Heart className={`h-3.5 w-3.5 ${saved ? 'fill-current' : ''}`} /> {saved ? 'Saved' : 'Wishlist'}
@@ -296,6 +303,78 @@ export default function PackageDetail() {
       </div>
 
     </div>
+  )
+}
+
+function SafetyCard({ destId, name }) {
+  const t = useT()
+  const [state, setState] = useState({ status: 'loading' })
+  const load = () => {
+    setState({ status: 'loading' })
+    api.conditionsFor(destId).then((r) => setState({ status: 'ok', r }))
+      .catch((e) => setState({ status: 'error', error: e.message }))
+  }
+  useEffect(load, [destId])
+  if (state.status === 'loading') return <Skeleton className="h-44 rounded-2xl" />
+  if (state.status === 'error') return <ErrorState title={t('Safety score unavailable')} message={state.error} onRetry={load} />
+  const { safety: s, weather: w, earthquakes: q, roads } = state.r
+  return (
+    <Reveal>
+      <div className="glass flex flex-col items-center gap-6 rounded-2xl p-6 sm:flex-row">
+        <SafetyGauge score={s.score} color={s.color} label={t(s.label)} />
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[11px] font-bold uppercase tracking-[.18em] text-frost-400">{t('Safety score')} · {name}</h2>
+          <p className="mt-2 text-[14px] leading-relaxed text-frost-100">{s.summary}</p>
+          <div className="mt-3 flex flex-wrap gap-2 text-[11.5px] text-frost-300">
+            {w && <span className="chip">{w.temp_c}°C · {w.condition}</span>}
+            <span className="chip">{q.length ? `${q.length} ${t('earthquakes within 100 km')}` : t('No earthquakes within 100 km')}</span>
+            <span className="chip">{roads.filter((r) => r.status === 'open').length}/{roads.length} {t('roads open')}</span>
+          </div>
+          <p className="mt-2 text-[11px] text-frost-400">{t('From live weather, USGS earthquakes, road status and altitude.')}</p>
+        </div>
+      </div>
+    </Reveal>
+  )
+}
+
+function PackageReviews({ packageId }) {
+  const t = useT()
+  const [state, setState] = useState({ status: 'loading' })
+  const load = () => {
+    setState({ status: 'loading' })
+    api.packageReviews(packageId).then((r) => setState({ status: 'ok', r })).catch((e) => setState({ status: 'error', error: e.message }))
+  }
+  useEffect(load, [packageId])
+  return (
+    <section>
+      <div className="mb-4 flex items-baseline justify-between">
+        <h2 className="text-[11px] font-bold uppercase tracking-[.18em] text-frost-400">{t('Traveler reviews')}</h2>
+        {state.status === 'ok' && state.r.count > 0 && <span className="text-[12px] text-frost-300">★ {state.r.average} · {state.r.count}</span>}
+      </div>
+      {state.status === 'loading' && <Skeleton className="h-24 rounded-2xl" />}
+      {state.status === 'error' && <ErrorState title={t("Couldn't load reviews")} message={state.error} onRetry={load} />}
+      {state.status === 'ok' && (state.r.count === 0 ? (
+        <div className="glass rounded-2xl p-5 text-[13px] text-frost-400">{t('No reviews on Northern Trails yet. Travelers can review a trip after completing it.')}</div>
+      ) : (
+        <div className="space-y-3">
+          {state.r.items.map((r) => (
+            <div key={r.id} className="glass rounded-2xl p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[13px] font-semibold text-frost-50">{r.author}</span>
+                <span className="text-[12px] text-amberz-300">{'★'.repeat(r.rating)}<span className="text-frost-400">{'★'.repeat(5 - r.rating)}</span></span>
+              </div>
+              {r.text && <p className="mt-2 text-[13px] leading-relaxed text-frost-200">{r.text}</p>}
+              {r.photos?.length > 0 && (
+                <div className="mt-3 flex gap-2">
+                  {r.photos.map((u) => <img key={u} src={assetUrl(u)} alt="" loading="lazy" className="h-16 w-20 rounded-lg object-cover" />)}
+                </div>
+              )}
+              <div className="mt-2 text-[11px] text-frost-400">{relTime(r.created_at)}</div>
+            </div>
+          ))}
+        </div>
+      ))}
+    </section>
   )
 }
 

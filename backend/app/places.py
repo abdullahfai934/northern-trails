@@ -63,6 +63,15 @@ async def _overpass(client: httpx.AsyncClient, lat: float, lon: float, radius: i
         f'nwr[amenity~"^(restaurant|cafe|fast_food)$"][name](around:{radius},{lat},{lon});'
         f'out center 80;'
     )
+    elements = await _run_overpass(client, query)
+    return [_restaurant(e) for e in elements if _has_point(e) and (e.get("tags") or {}).get("name")]
+
+
+def _has_point(e: dict) -> bool:
+    return (e.get("lat") or (e.get("center") or {}).get("lat")) is not None
+
+
+async def _run_overpass(client: httpx.AsyncClient, query: str) -> List[dict]:
     last_exc: Exception | None = None
     elements = None
     for url in config.OVERPASS_URLS:
@@ -85,32 +94,88 @@ async def _overpass(client: httpx.AsyncClient, lat: float, lon: float, radius: i
             break
     if elements is None:
         raise last_exc or RuntimeError("no Overpass endpoint configured")
+    return elements
 
-    out = []
+
+def _restaurant(e: dict) -> dict:
+    tags = e.get("tags") or {}
+    elat = e.get("lat") or (e.get("center") or {}).get("lat")
+    elon = e.get("lon") or (e.get("center") or {}).get("lon")
+    kind = tags.get("amenity", "restaurant")
+    address = ", ".join(x for x in (tags.get("addr:street"), tags.get("addr:city")) if x)
+    return {
+        "id": f"osm-{e['type']}-{e['id']}",
+        "name": tags["name"],
+        "cuisine": _cuisine(tags.get("cuisine", ""), kind),
+        "kind": OSM_KINDS.get(kind, "Restaurant"),
+        "lat": elat, "lon": elon,
+        "address": address,
+        "phone": tags.get("phone") or tags.get("contact:phone") or "",
+        "website": tags.get("website") or tags.get("contact:website") or "",
+        "opening_hours": tags.get("opening_hours", ""),
+        "rating": None,
+        "source": "openstreetmap",
+        "source_url": f"https://www.openstreetmap.org/{e['type']}/{e['id']}",
+        "directions_url": directions_url(elat, elon),
+    }
+
+
+# ------------------------------------------------------ points of interest
+#: Map layers and the SOS page. Each kind is an OpenStreetMap tag filter.
+POI_KINDS = {
+    "hospital": ('nwr[amenity~"^(hospital|clinic|doctors)$"]', "Hospital / clinic"),
+    "fuel": ('nwr[amenity=fuel]', "Petrol pump"),
+    "police": ('nwr[amenity=police]', "Police station"),
+    "hotel": ('nwr[tourism~"^(hotel|guest_house|hostel|motel)$"]', "Hotel / guest house"),
+}
+_poi_cache = TTLCache("pois", ttl_sec=24 * 3600)
+
+
+async def pois(kind: str, lat: float, lon: float, radius: int = 15000,
+               *, client: httpx.AsyncClient | None = None) -> Dict[str, Any]:
+    if kind not in POI_KINDS:
+        return {"ok": False, "error": f"kind must be one of {', '.join(POI_KINDS)}", "items": []}
+    radius = max(500, min(radius, 50000))
+    key = f"{kind}:{lat:.3f},{lon:.3f}:{radius}"
+    cached = _poi_cache.get(key)
+    if cached is not None:
+        return {**cached, "cached": True}
+    if not config.LOOKUPS_ENABLED and client is None:
+        return {"ok": True, "kind": kind, "items": [], "source": "none"}
+    filt, label = POI_KINDS[kind]
+    query = f'[out:json][timeout:25];{filt}(around:{radius},{lat},{lon});out center 120;'
+    own = client is None
+    client = client or httpx.AsyncClient(timeout=30, headers={"User-Agent": config.SOURCE_USER_AGENT})
+    try:
+        elements = await _run_overpass(client, query)
+    except Exception:
+        stale = _poi_cache.get(key, allow_stale=True)
+        if stale is not None:
+            return {**stale, "stale": True}
+        return {"ok": False, "kind": kind, "items": [],
+                "error": "The map directory could not be reached. Try again shortly."}
+    finally:
+        if own:
+            await client.aclose()
+    items = []
     for e in elements:
-        tags = e.get("tags") or {}
-        elat = e.get("lat") or (e.get("center") or {}).get("lat")
-        elon = e.get("lon") or (e.get("center") or {}).get("lon")
-        if elat is None or elon is None or not tags.get("name"):
+        if not _has_point(e):
             continue
-        kind = tags.get("amenity", "restaurant")
-        address = ", ".join(x for x in (tags.get("addr:street"), tags.get("addr:city")) if x)
-        out.append({
-            "id": f"osm-{e['type']}-{e['id']}",
-            "name": tags["name"],
-            "cuisine": _cuisine(tags.get("cuisine", ""), kind),
-            "kind": OSM_KINDS.get(kind, "Restaurant"),
-            "lat": elat, "lon": elon,
-            "address": address,
-            "phone": tags.get("phone") or tags.get("contact:phone") or "",
-            "website": tags.get("website") or tags.get("contact:website") or "",
-            "opening_hours": tags.get("opening_hours", ""),
-            "rating": None,
-            "source": "openstreetmap",
-            "source_url": f"https://www.openstreetmap.org/{e['type']}/{e['id']}",
+        t = e.get("tags") or {}
+        elat = e.get("lat") or e["center"]["lat"]
+        elon = e.get("lon") or e["center"]["lon"]
+        items.append({
+            "id": f"osm-{e['type']}-{e['id']}", "kind": kind, "label": label,
+            "name": t.get("name") or t.get("name:en") or label,
+            "lat": elat, "lon": elon, "distance_km": round(haversine_km(lat, lon, elat, elon), 2),
+            "phone": t.get("phone") or t.get("contact:phone") or t.get("emergency:phone") or "",
+            "emergency": t.get("emergency") == "yes",
             "directions_url": directions_url(elat, elon),
         })
-    return out
+    items.sort(key=lambda x: x["distance_km"])
+    result = {"ok": True, "kind": kind, "radius_m": radius, "source": "openstreetmap", "items": items[:80]}
+    _poi_cache.set(key, result)
+    return result
 
 
 async def _google(client: httpx.AsyncClient, lat: float, lon: float, radius: int) -> List[dict]:

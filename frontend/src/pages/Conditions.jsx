@@ -2,20 +2,61 @@ import React, { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   AlertTriangle, CloudSun, FileCheck2, Mountain, Route as RouteIcon,
-  ShieldAlert, Wind, Eye, Droplets, Gauge, ChevronDown,
+  ShieldAlert, Wind, Eye, Droplets, Gauge, ChevronDown, Loader2,
 } from 'lucide-react'
 
 import { useData } from '../lib/store'
-import { STATUS, relTime } from '../lib/api'
-import { Reveal, SectionTitle, StatusPill, Stagger, ease, item } from '../components/ui'
+import { STATUS, api, relTime } from '../lib/api'
+import { useAuth } from '../lib/auth'
+import { Reveal, SectionTitle, Skeleton, StatusPill, Stagger, ease, item, useToast } from '../components/ui'
 import SourcePanel, { OriginTag } from '../components/SourcePanel'
+
+/** Operators and admins set a road's status; the change is stored with who and when. */
+function RouteEditor({ route, onSaved }) {
+  const toast = useToast()
+  const [status, setStatus] = useState(route.status)
+  const [note, setNote] = useState(route.status_note)
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const save = async (e) => {
+    e.preventDefault()
+    if (note.trim().length < 3) { setError('Describe the condition in a few words'); return }
+    setBusy(true); setError('')
+    try {
+      await api.setRouteStatus(route.id, status, note.trim())
+      toast('Road status updated')
+      await onSaved?.()
+    } catch (err) { setError(err.message) } finally { setBusy(false) }
+  }
+  return (
+    <form onSubmit={save} className="mt-4 rounded-xl border border-glacier-400/20 bg-glacier-400/[.04] p-4">
+      <div className="mb-3 text-[10px] font-bold uppercase tracking-[.16em] text-glacier-300">Update road status</div>
+      <div className="grid gap-3 sm:grid-cols-[180px_1fr_auto]">
+        <select value={status} onChange={(e) => setStatus(e.target.value)} className="field !py-2" aria-label="Status">
+          {['open', 'caution', 'restricted', 'seasonal', 'closed'].map((x) => <option key={x} value={x}>{STATUS[x].label}</option>)}
+        </select>
+        <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={400} className="field !py-2" aria-label="What travelers need to know" placeholder="What travelers need to know" />
+        <button type="submit" disabled={busy} className="btn-primary !px-4 !py-2 !text-[13px]">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}</button>
+      </div>
+      {error && <p role="alert" className="mt-2 text-[12px] text-rose-300">{error}</p>}
+    </form>
+  )
+}
 
 export default function Conditions() {
   const d = useData()
+  const auth = useAuth()
   const [valley, setValley] = useState('All')
   const [open, setOpen] = useState(null)
 
-  if (!d.ready) return <div className="px-5 py-32 text-center text-frost-400">Loading live conditions…</div>
+  if (!d.ready) {
+    return (
+      <div className="mx-auto max-w-7xl space-y-3 px-5 pb-16 pt-14 sm:px-8">
+        <Skeleton className="h-12 w-2/3" />
+        {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-24 rounded-2xl" />)}
+      </div>
+    )
+  }
 
   const valleys = ['All', ...new Set(d.routes.map((r) => r.valley))]
   const routes = valley === 'All' ? d.routes : d.routes.filter((r) => r.valley === valley)
@@ -27,7 +68,7 @@ export default function Conditions() {
         <SectionTitle
           eyebrow="Live conditions layer"
           title="Every route, tracked and timestamped."
-          sub="Live weather from Open-Meteo, hazards from GDACS, earthquakes from USGS and the PMD tourist advisory — fused per route with a confidence score and a provenance tag on every record. Road status is the seeded baseline until an official NHA feed is available."
+          sub="Live weather from Open-Meteo, hazards from GDACS, earthquakes from USGS and the PMD tourist advisory — fused per route. Road status is reported by verified operators and admins on the ground, and every road shows who updated it and when."
         />
       </Reveal>
 
@@ -191,7 +232,9 @@ export default function Conditions() {
                     <span>{r.distance_km} km</span>
                     <span>~{r.drive_hours} h</span>
                     <span className="flex items-center gap-1"><Mountain className="h-3 w-3" />{r.elevation_m} m</span>
-                    <span>{relTime(r.updated_at)}</span>
+                    <span title={r.updated_at ? new Date(r.updated_at).toLocaleString() : ''}>
+                      Updated {relTime(r.updated_at)}{r.updated_by ? ` by ${r.updated_by}` : ''}
+                    </span>
                   </div>
                 </div>
                 <motion.span animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.3 }}>
@@ -238,7 +281,9 @@ export default function Conditions() {
                         <span className="flex items-center gap-1.5"><Gauge className="h-3.5 w-3.5" /> confidence {Math.round(r.confidence * 100)}%</span>
                         <span>{r.traveler_reports} traveler reports</span>
                         <span className="truncate">source: {r.source}</span>
+                        {r.updated_at && <span>last updated {new Date(r.updated_at).toLocaleString()}</span>}
                       </div>
+                      {auth.isOperator && <RouteEditor route={r} onSaved={d.refresh} />}
                     </div>
                   </motion.div>
                 )}

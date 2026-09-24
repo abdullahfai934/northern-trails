@@ -1,19 +1,20 @@
 import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AnimatePresence, motion, useScroll, useTransform } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion, useScroll, useTransform } from 'framer-motion'
 import {
   ArrowRight, Zap, Compass, ShieldCheck, Radio, Sparkles, AlertTriangle,
   CloudSun, Route as RouteIcon, MessageSquareText, BadgeCheck, Gauge,
 } from 'lucide-react'
 
 import { useData } from '../lib/store'
-import { Scene } from '../lib/scenes'
+import { useT } from '../lib/i18n'
 import { getPhotos } from '../lib/photos'
-import { STATUS, relTime } from '../lib/api'
+import { STATUS, api, relTime } from '../lib/api'
+import { SafetyGauge } from '../components/charts'
 import PackageCard from '../components/PackageCard'
 import PlacePhoto from '../components/PlacePhoto'
 import Carousel from '../components/Carousel'
-import { CountUp, Marquee, Reveal, SectionTitle, Skeleton, Stagger, StatusPill, ease, item } from '../components/ui'
+import { CountUp, ErrorState, Marquee, Reveal, SectionTitle, Skeleton, Stagger, StatusPill, ease, item } from '../components/ui'
 
 const SLIDES = [
   { scene: 'hunza',   title: 'Hunza',         query: 'Hunza Valley',               sub: 'Karimabad · Attabad · Passu Cones' },
@@ -24,106 +25,128 @@ const SLIDES = [
 ]
 
 /* ------------------------------------------------------------------ hero */
+/** Reveals a line word by word from below — once, on load. */
+function WordReveal({ text, delay = 0, className = '' }) {
+  const reduce = useReducedMotion()
+  return (
+    <span className={className}>
+      {text.split(' ').map((w, k) => (
+        <span key={k} className="-my-[0.1em] inline-block overflow-hidden pb-[0.22em] pt-[0.1em] align-bottom">
+          <motion.span className="inline-block"
+            initial={reduce ? false : { y: '110%', opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.8, delay: delay + k * 0.07, ease }}>
+            {w}{'\u00A0'}
+          </motion.span>
+        </span>
+      ))}
+    </span>
+  )
+}
+
+const SLIDE_MS = 7000
+
 function Hero({ alerts = [] }) {
+  const t = useT()
   const [i, setI] = useState(0)
+  const [paused, setPaused] = useState(false)
+  const reduce = useReducedMotion()
   const { scrollY } = useScroll()
-  const y = useTransform(scrollY, [0, 600], [0, 140])
-  const fade = useTransform(scrollY, [0, 420], [1, 0])
+  const y = useTransform(scrollY, [0, 700], [0, 160])
+  const fade = useTransform(scrollY, [0, 460], [1, 0])
 
   useEffect(() => {
-    const t = setInterval(() => setI((v) => (v + 1) % SLIDES.length), 6500)
-    return () => clearInterval(t)
-  }, [])
+    if (paused || reduce) return undefined
+    const timer = setTimeout(() => setI((v) => (v + 1) % SLIDES.length), SLIDE_MS)
+    return () => clearTimeout(timer)
+  }, [i, paused, reduce])
 
-  // Warm the next slide's photo so it is decoded before it fades in.
+  // Fetch every slide's photo up front so each is decoded before it fades in.
   useEffect(() => {
-    const next = SLIDES[(i + 1) % SLIDES.length]
-    getPhotos(next.query, 1).then((items) => {
+    SLIDES.forEach((s) => getPhotos(s.query, 1).then((items) => {
       if (items[0]) { const img = new Image(); img.src = items[0].url }
-    })
-  }, [i])
+    }))
+  }, [])
 
   const slide = SLIDES[i]
   const urgent = alerts.find((a) => a.severity === 'high')
 
   return (
-    <section className="on-photo relative -mt-16 min-h-[100svh] overflow-hidden bg-abyss pt-16">
-      {/* sliding backdrop: a real photo over its illustrated stand-in */}
-      <motion.div style={{ y }} className="absolute inset-0">
-        <AnimatePresence mode="sync">
-          <motion.div
-            key={slide.scene}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 1.6, ease }}
-            className="absolute inset-0"
-          >
-            <Scene name={slide.scene} className="absolute inset-0 h-full w-full" seed={i} />
-            <PlacePhoto query={slide.query} name={slide.title} count={1} large eager credit
-                        className="absolute inset-0 h-full w-full" imgClassName="animate-kenburns" />
+    <section className="on-photo relative -mt-16 min-h-[100svh] overflow-hidden bg-abyss pt-16"
+             onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+      {/* Photo slideshow: every slide is mounted; the active one fades in and
+          zooms slowly (Ken Burns), the others rest at opacity 0. */}
+      <motion.div style={{ y }} className="absolute inset-0" aria-hidden="true">
+        {SLIDES.map((s, idx) => (
+          <motion.div key={s.scene} className="absolute inset-0"
+            initial={false} animate={{ opacity: idx === i ? 1 : 0 }} transition={{ duration: 1.8, ease }}>
+            <div className="absolute inset-0 bg-gradient-to-br from-ink-800 via-abyss to-abyss" />
+            <PlacePhoto query={s.query} name={s.title} count={1} large eager={idx < 2} credit={idx === i}
+                        className="absolute inset-0 h-full w-full"
+                        imgClassName={idx === i && !reduce ? 'nt-kenburns' : ''} key={idx === i ? `on-${i}` : `off-${idx}`} />
           </motion.div>
-        </AnimatePresence>
-        <div className="absolute inset-0 bg-gradient-to-b from-abyss/70 via-abyss/45 to-abyss/95" />
-        <div className="absolute inset-0 bg-gradient-to-r from-abyss/60 via-transparent to-transparent" />
+        ))}
+        {/* Dark gradient so the headline always reads */}
+        <div className="absolute inset-0 bg-gradient-to-b from-abyss/75 via-abyss/45 to-abyss/95" />
+        <div className="absolute inset-0 bg-gradient-to-r from-abyss/70 via-abyss/20 to-transparent rtl:bg-gradient-to-l" />
         <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-ink-950" />
       </motion.div>
 
       <motion.div style={{ opacity: fade }} className="relative mx-auto flex min-h-[calc(100svh-4rem)] max-w-7xl flex-col justify-center px-5 py-24 sm:px-8">
-        <motion.div initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease }}>
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.1, ease }}>
           <span className="chip !border-glacier-400/25 !bg-glacier-400/10 !text-glacier-200">
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping2 rounded-full bg-glacier-300" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-glacier-300" />
             </span>
-            Live conditions layer · updated continuously
+            {t('Live conditions layer · updated continuously')}
           </span>
         </motion.div>
 
-        <motion.h1
-          initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, delay: 0.1, ease }}
-          className="mt-6 max-w-4xl text-[2.6rem] font-bold leading-[1.04] tracking-tight text-frost-50 drop-shadow-[0_4px_30px_rgba(0,0,0,.45)] sm:text-6xl lg:text-[4.6rem]"
-        >
-          Book the North with<br />
-          <span className="bg-gradient-to-r from-glacier-300 via-snow to-amberz-300 bg-clip-text text-transparent">facts, not Facebook groups.</span>
-        </motion.h1>
+        <h1 className="font-serif-display mt-6 max-w-4xl text-[2.7rem] font-semibold leading-[1.06] text-frost-50 drop-shadow-[0_4px_30px_rgba(0,0,0,.45)] sm:text-6xl lg:text-[4.7rem]">
+          <WordReveal text={t('Book the North with')} delay={0.25} />
+          <br />
+          <WordReveal text={t('facts, not Facebook groups.')} delay={0.55} className="text-gradient italic" />
+        </h1>
 
         <motion.p
-          initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, delay: 0.2, ease }}
+          initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 1.05, ease }}
           className="mt-6 max-w-xl text-[16px] leading-relaxed text-frost-300 sm:text-[17px]"
         >
-          Compare multi-day tours from tourism-department-verified operators, or request a jeep,
-          guide or transfer and get matched in real time — every answer grounded in live road
-          status, weather and permit data.
+          {t('Compare multi-day tours from tourism-department-verified operators, or request a jeep, guide or transfer and get matched in real time — every answer grounded in live road status, weather and permit data.')}
         </motion.p>
 
         <motion.div
-          initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, delay: 0.3, ease }}
+          initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 1.2, ease }}
           className="mt-9 flex flex-wrap items-center gap-3"
         >
-          <Link to="/explore" className="btn-primary"><Compass className="h-4 w-4" /> Browse packages</Link>
-          <Link to="/instant" className="btn-ghost"><Zap className="h-4 w-4 text-amberz-300" /> Request a ride now</Link>
+          <Link to="/explore" className="btn-primary"><Compass className="h-4 w-4" /> {t('Browse packages')}</Link>
+          <Link to="/instant" className="btn-ghost"><Zap className="h-4 w-4 text-amberz-300" /> {t('Request a ride now')}</Link>
         </motion.div>
 
-        {/* slide indicator */}
+        {/* Slide indicator, synced with the photo on screen */}
         <motion.div
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.4, duration: 0.6 }}
           className="mt-14 flex items-center gap-5"
         >
-          <div className="flex gap-1.5">
+          <div className="flex gap-1.5" role="tablist" aria-label={t('Destinations')}>
             {SLIDES.map((s, idx) => (
-              <button key={s.scene} onClick={() => setI(idx)} aria-label={s.title}
-                className={`h-1 rounded-full transition-all duration-500 ${idx === i ? 'w-8 bg-glacier-300' : 'w-3 bg-white/20 hover:bg-white/40'}`} />
+              <button key={s.scene} onClick={() => setI(idx)} role="tab" aria-selected={idx === i} aria-label={s.title}
+                className={`relative h-1 overflow-hidden rounded-full transition-all duration-700 ${idx === i ? 'w-10 bg-white/20' : 'w-3 bg-white/20 hover:bg-white/40'}`}>
+                {idx === i && (
+                  <motion.span key={`${i}-${paused}`} className="absolute inset-y-0 start-0 rounded-full bg-glacier-300"
+                    initial={{ width: paused || reduce ? '100%' : '0%' }} animate={{ width: '100%' }}
+                    transition={{ duration: paused || reduce ? 0 : SLIDE_MS / 1000, ease: 'linear' }} />
+                )}
+              </button>
             ))}
           </div>
           <AnimatePresence mode="wait">
             <motion.div key={slide.title}
               initial={{ opacity: 0, x: 14 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -14 }}
-              transition={{ duration: 0.45, ease }}>
-              <div className="text-sm font-bold text-frost-50">{slide.title}</div>
+              transition={{ duration: 0.5, ease }}>
+              <div className="text-sm font-semibold text-frost-50">{slide.title}</div>
               <div className="text-[11px] tracking-wide text-frost-400">{slide.sub}</div>
             </motion.div>
           </AnimatePresence>
@@ -131,7 +154,7 @@ function Hero({ alerts = [] }) {
 
         {urgent && (
           <motion.div
-            initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.75, duration: 0.7, ease }}
+            initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.6, duration: 0.7, ease }}
             className="glass mt-10 flex max-w-2xl items-start gap-3 rounded-2xl border-rose-400/20 bg-rose-400/[.06] p-4"
           >
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-300" />
@@ -267,6 +290,60 @@ function ConditionsStrip({ routes = [], weather = [] }) {
   )
 }
 
+/* ------------------------------------------------ best places this week */
+function BestThisWeek() {
+  const t = useT()
+  const [state, setState] = useState({ status: 'loading', items: [] })
+  const load = () => {
+    setState({ status: 'loading', items: [] })
+    api.recommendations().then((r) => setState({ status: 'ok', items: r.items.slice(0, 3) }))
+      .catch((e) => setState({ status: 'error', items: [], error: e.message }))
+  }
+  useEffect(load, [])
+  return (
+    <section className="mx-auto max-w-7xl px-5 py-20 sm:px-8">
+      <SectionTitle eyebrow={t('This week')} title={t('Best places to visit this week.')}
+        sub={t('Ranked from the live forecast, road status, recent earthquakes and the season — refreshed as conditions change.')}
+        right={<Link to="/map" className="btn-ghost !py-2.5 !text-[13px]">{t('Open the map')} <ArrowRight className="h-3.5 w-3.5" /></Link>} />
+      {state.status === 'loading' && <div className="grid gap-5 md:grid-cols-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-[360px] rounded-2xl" />)}</div>}
+      {state.status === 'error' && <ErrorState title={t('Recommendations are loading')} message={state.error} onRetry={load} />}
+      {state.status === 'ok' && (
+        <Stagger className="grid gap-5 md:grid-cols-3">
+          {state.items.map((r, k) => (
+            <motion.div key={r.destination.id} variants={item} whileHover={{ y: -6 }} transition={{ duration: 0.5, ease }}
+              className="glass group overflow-hidden rounded-2xl transition-shadow duration-500 hover:shadow-glow">
+              <div className="relative h-40 overflow-hidden">
+                <PlacePhoto query={r.destination.photo_query || r.destination.name} name={r.destination.name} count={1}
+                            className="h-full w-full" imgClassName="group-hover:!scale-110 !duration-[1.4s]" />
+                <div className="absolute inset-0 bg-gradient-to-t from-abyss/80 to-transparent" />
+                <span className="absolute start-3 top-3 rounded-full bg-abyss/60 px-2.5 py-1 font-mono text-[11px] font-bold text-snow backdrop-blur">#{k + 1}</span>
+                <div className="absolute bottom-3 start-3 font-display text-xl font-semibold text-snow">{r.destination.name}</div>
+              </div>
+              <div className="flex items-center gap-4 p-5">
+                <SafetyGauge score={r.safety.score} color={r.safety.color} label={t(r.safety.label)} size={104} stroke={9} />
+                <div className="min-w-0">
+                  <div className="text-[12.5px] font-semibold capitalize text-frost-100">{r.reason}</div>
+                  <p className="mt-1 line-clamp-3 text-[12px] leading-relaxed text-frost-400">{r.safety.summary}</p>
+                  <div className="mt-2 flex gap-1.5">
+                    {r.forecast.slice(0, 3).map(([day, hi, lo, icon]) => (
+                      <span key={day} className="rounded-md bg-white/[.04] px-1.5 py-0.5 text-[10.5px] text-frost-300" title={icon}>{day} {hi}°/{lo}°</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="border-t border-white/[.05] px-5 py-3">
+                <Link to={`/explore?destination=${encodeURIComponent(r.destination.name)}`} className="text-[12.5px] font-semibold text-glacier-300 hover:underline">
+                  {r.packages.length} {t(r.packages.length === 1 ? 'package' : 'packages')} →
+                </Link>
+              </div>
+            </motion.div>
+          ))}
+        </Stagger>
+      )}
+    </section>
+  )
+}
+
 /* ------------------------------------------------------------- packages */
 function Featured({ packages = [] }) {
   return (
@@ -359,13 +436,14 @@ function AssistantTeaser({ suggestions = [] }) {
 }
 
 /* ---------------------------------------------------------------- stats */
-function Stats({ operators = [], routes = [], packages = [] }) {
-  const trips = operators.reduce((s, o) => s + o.trips, 0)
+function Stats({ operators = [], destinations = [], packages = [] }) {
+  const t = useT()
+  const trips = operators.reduce((sum, o) => sum + (o.trips || 0), 0)
   const cells = [
-    { icon: ShieldCheck, value: operators.length, label: 'Verified operators', suffix: '' },
-    { icon: Gauge, value: trips, label: 'Trips completed', suffix: '+' },
-    { icon: RouteIcon, value: routes.length, label: 'Routes monitored', suffix: '' },
-    { icon: Compass, value: packages.length, label: 'Live packages', suffix: '' },
+    { icon: Compass, value: packages.length, label: t('Tours listed'), suffix: '' },
+    { icon: ShieldCheck, value: operators.length, label: t('Verified operators'), suffix: '' },
+    { icon: RouteIcon, value: destinations.length, label: t('Destinations'), suffix: '' },
+    { icon: Gauge, value: trips, label: t('Trips run by our operators'), suffix: '+' },
   ]
   return (
     <section className="border-y border-white/[.06] bg-ink-900/30">
@@ -413,9 +491,10 @@ export default function Home() {
       </div>
       <Flows />
       <ConditionsStrip routes={d.routes} weather={d.weather} />
+      <BestThisWeek />
       <Featured packages={d.packages} />
       <AssistantTeaser suggestions={d.suggestions} />
-      <Stats operators={d.operators} routes={d.routes} packages={d.packages} />
+      <Stats operators={d.operators} destinations={d.destinations} packages={d.packages} />
     </>
   )
 }

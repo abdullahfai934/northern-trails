@@ -1,8 +1,10 @@
 import React, { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { AlertTriangle, Check, Loader2 } from 'lucide-react'
 
 import { api, pkr, postToGateway } from '../lib/api'
+import { useAuth } from '../lib/auth'
 import { Field, fieldClass, useToast } from './ui'
 
 const PHONE_RE = /^\+?[0-9][0-9\s-]{8,17}$/
@@ -42,7 +44,13 @@ function Row({ k, v }) {
  */
 export default function BookingFlow({ pkg, onDone }) {
   const toast = useToast()
-  const [form, setForm] = useState({ traveler_name: '', phone: '', email: '', start_date: '', travelers: 2, notes: '' })
+  const auth = useAuth()
+  const [form, setForm] = useState(() => ({
+    traveler_name: auth?.profile?.name || auth?.user?.displayName || '',
+    phone: auth?.profile?.phone || auth?.user?.phoneNumber || '',
+    email: auth?.profile?.email || auth?.user?.email || '',
+    start_date: '', travelers: 2, notes: '',
+  }))
   const [errors, setErrors] = useState({})
   const [touched, setTouched] = useState({})
   const [submitting, setSubmitting] = useState(false)
@@ -129,6 +137,7 @@ export default function BookingFlow({ pkg, onDone }) {
             Your booking is saved. The operator confirms availability before departure; the
             sandbox gateway runs the same signed callback a live JazzCash or Easypaisa payment does.
           </p>
+          <Link to="/profile?tab=bookings" onClick={onDone} className="btn-ghost w-full !py-2.5 !text-[13px]">View in My bookings</Link>
           {onDone && <button onClick={onDone} className="btn-ghost w-full !py-2.5 !text-[13px]">Done</button>}
         </div>
       </div>

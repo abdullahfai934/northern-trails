@@ -27,7 +27,7 @@ export function PhotoPlaceholder({ name, className = '', compact = false }) {
       aria-label={name ? `${name} (no photo available)` : 'No photo available'}
     >
       <svg viewBox="0 0 400 120" preserveAspectRatio="none" className="absolute inset-x-0 bottom-0 h-1/2 w-full opacity-40" aria-hidden="true">
-        <path d="M0 120 L0 80 L60 40 L100 70 L150 20 L210 75 L260 45 L320 85 L360 60 L400 80 L400 120 Z" fill="rgba(255,255,255,.18)" />
+        <path d="M0 120 L0 80 L60 40 L100 70 L150 20 L210 75 L260 45 L320 85 L360 60 L400 80 L400 120 Z" fill="rgba(237,232,224,.18)" />
         <path d="M0 120 L0 95 L80 70 L140 95 L200 60 L270 100 L340 75 L400 95 L400 120 Z" fill="rgba(0,0,0,.28)" />
       </svg>
       {!compact && (

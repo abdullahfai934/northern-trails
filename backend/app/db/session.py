@@ -88,6 +88,7 @@ MIGRATIONS = [
     "ALTER TABLE packages ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now()",
     "CREATE INDEX IF NOT EXISTS ix_packages_source ON packages (source)",
     "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT ''",
+    "ALTER TABLE routes ADD COLUMN IF NOT EXISTS updated_by VARCHAR(120) DEFAULT ''",
 ]
 
 

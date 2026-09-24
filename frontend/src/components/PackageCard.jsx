@@ -43,7 +43,7 @@ export default function PackageCard({ pkg, index = 0, eager = false, standalone 
 
   const toggleSave = (e) => {
     e?.preventDefault()
-    toast(wish.toggle(pkg.id) ? 'Saved to your wishlist' : 'Removed from your wishlist')
+    { const r = wish.toggle(pkg.id); if (r !== null) toast(r ? 'Saved to your wishlist' : 'Removed from your wishlist') }
   }
 
   return (

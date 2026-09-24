@@ -19,9 +19,10 @@ os.environ["POLL_ENABLED"] = "0"
 os.environ["DATABASE_URL"] = ""
 
 from app import assistant, data  # noqa: E402
+from app.geo import ROUTE_ENDPOINTS  # noqa: E402
 
 snapshot = {
-    "routes": data.ROUTES,
+    "routes": [{**r, "endpoints": ROUTE_ENDPOINTS.get(r["id"])} for r in data.ROUTES],
     "alerts": data.ALERTS,
     "weather": data.WEATHER,
     "operators": data.OPERATORS,

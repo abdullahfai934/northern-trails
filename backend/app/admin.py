@@ -18,7 +18,7 @@ from typing import List, Literal
 from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile
 from pydantic import BaseModel, Field, field_validator
 
-from . import config, data
+from . import auth, config, data
 from .db import repo
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -44,6 +44,28 @@ def require_admin(x_admin_token: str = Header("", alias="X-Admin-Token")) -> Non
         raise HTTPException(503, "Package admin is switched off: set ADMIN_TOKEN on the server.")
     if not hmac.compare_digest(x_admin_token.encode(), config.ADMIN_TOKEN.encode()):
         raise HTTPException(401, "Wrong admin token.")
+
+
+async def package_editor(x_admin_token: str = Header("", alias="X-Admin-Token"),
+                         user: auth.Identity = Depends(auth.current_user)) -> auth.Identity:
+    """Who may add and edit packages: a signed-in admin or operator, or a
+    script holding ADMIN_TOKEN. Operators are limited to their own packages
+    (checked in each route)."""
+    if x_admin_token and config.ADMIN_TOKEN and hmac.compare_digest(
+            x_admin_token.encode(), config.ADMIN_TOKEN.encode()):
+        return auth.Identity(uid="admin-token", anonymous=False, profile={"role": "admin"})
+    if user.anonymous:
+        raise HTTPException(401, "Sign in with an operator or admin account.")
+    if user.role not in ("admin", "operator"):
+        raise HTTPException(403, "Only operators and admins can manage packages.")
+    if user.role == "operator" and not user.operator_id:
+        raise HTTPException(403, "Your operator account is not linked to an operator yet — ask an admin.")
+    return user
+
+
+def _own(user: auth.Identity, operator_id: str) -> None:
+    if user.role == "operator" and operator_id != user.operator_id:
+        raise HTTPException(403, "You can only manage your own operator's packages.")
 
 
 # ------------------------------------------------------------------ schema
@@ -195,8 +217,9 @@ def verify(x_admin_token: str = Header("", alias="X-Admin-Token")):
     return {"ok": ok, "persistent": repo.enabled()}
 
 
-@router.post("/packages", dependencies=[Depends(require_admin)], status_code=201)
-async def create_package(body: PackageIn):
+@router.post("/packages", status_code=201)
+async def create_package(body: PackageIn, user: auth.Identity = Depends(package_editor)):
+    _own(user, body.operator_id)
     package_id = f"pkg-{_slug(body.destination)}-{_slug(body.title)[:24]}-{uuid.uuid4().hex[:4]}"
     pkg = _build(body, package_id, None)
     stored = await repo.save_package(pkg)
@@ -204,30 +227,40 @@ async def create_package(body: PackageIn):
     return {"package": data.package_with_operator(pkg), "persisted": stored}
 
 
-@router.put("/packages/{package_id}", dependencies=[Depends(require_admin)])
-async def update_package(package_id: str, body: PackageIn):
+@router.put("/packages/{package_id}")
+async def update_package(package_id: str, body: PackageIn, user: auth.Identity = Depends(package_editor)):
     existing = data.package_index().get(package_id)
     if not existing:
         raise HTTPException(404, "Package not found")
+    _own(user, existing["operator_id"])
+    _own(user, body.operator_id)
     pkg = _build(body, package_id, existing)
     stored = await repo.save_package(pkg)
     _put(pkg)
     return {"package": data.package_with_operator(pkg), "persisted": stored}
 
 
-@router.delete("/packages/{package_id}", dependencies=[Depends(require_admin)])
-async def delete_package(package_id: str):
+@router.delete("/packages/{package_id}")
+async def delete_package(package_id: str, user: auth.Identity = Depends(package_editor)):
     if package_id in SEED_IDS:
         raise HTTPException(403, "Sample packages can be edited but not deleted.")
     if package_id not in data.package_index():
         raise HTTPException(404, "Package not found")
+    _own(user, data.package_index()[package_id]["operator_id"])
     stored = await repo.delete_package(package_id)
     data.PACKAGES[:] = [p for p in data.PACKAGES if p["id"] != package_id]
     return {"deleted": package_id, "persisted": stored}
 
 
-@router.post("/images", dependencies=[Depends(require_admin)], status_code=201)
-async def upload_image(file: UploadFile = File(...)):
+@router.post("/images", status_code=201)
+async def upload_image(file: UploadFile = File(...), user: auth.Identity = Depends(auth.current_user),
+                       x_admin_token: str = Header("", alias="X-Admin-Token")):
+    """Upload a photo. Operators and admins use it for packages; any
+    signed-in traveler may use it for photos on their own review."""
+    token_ok = bool(x_admin_token and config.ADMIN_TOKEN and hmac.compare_digest(
+        x_admin_token.encode(), config.ADMIN_TOKEN.encode()))
+    if user.anonymous and not token_ok:
+        raise HTTPException(401, "Sign in to upload photos.")
     blob = await file.read(MAX_IMAGE_BYTES + 1)
     if len(blob) > MAX_IMAGE_BYTES:
         raise HTTPException(413, "Image is larger than 3 MB.")

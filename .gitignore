@@ -35,3 +35,6 @@ backend/.venv/
 
 # lookup caches (photos, restaurants)
 backend/.cache/
+
+# service-account keys
+.secrets/

@@ -10,38 +10,61 @@
   color-scheme: dark;
   --ink-950: 7 11 20;   --ink-900: 11 18 32;  --ink-850: 15 23 39;
   --ink-800: 20 29 48;  --ink-700: 28 39 64;
-  --frost-50: 244 248 255;  --frost-100: 228 237 251; --frost-200: 195 212 238;
-  --frost-300: 147 174 212; --frost-400: 102 132 175;
-  --overlay: 255 255 255;
-  --glacier-200: 180 238 242; --glacier-300: 126 224 230;
-  --saffron-300: 255 210 138;
-  --amberz-100: 253 239 200; --amberz-200: 251 227 166; --amberz-300: 252 215 127;
-  --rose-200: 254 205 211; --rose-300: 253 164 175;
-  --emerald-300: 110 231 183; --sky-300: 125 211 252; --orange-300: 253 186 116;
+  /* Text: a warm off-white for headings, muted ivory for body, dim labels.
+     Nothing on the page is pure #FFFFFF. */
+  --frost-50: 237 232 224;  --frost-100: 222 217 209; --frost-200: 204 199 191;
+  --frost-300: 185 180 172; --frost-400: 138 143 150;
+  --overlay: 237 232 224;
+  /* Softened, premium accents: teal ~#6CC4C0, gold ~#D9B45F */
+  --glacier-200: 160 214 211; --glacier-300: 108 196 192; --glacier-400: 90 178 174;
+  --glacier-500: 72 156 153;  --glacier-600: 56 132 130;
+  --saffron-300: 227 196 126;
+  --amberz-100: 240 226 196; --amberz-200: 232 210 158; --amberz-300: 227 196 126;
+  --amberz-400: 217 180 95;  --amberz-500: 190 154 72;
+  --rose-200: 240 196 196; --rose-300: 226 150 150;
+  --emerald-300: 132 204 170; --sky-300: 140 190 220; --orange-300: 228 170 120;
   --shadow: 2 8 23;
-  --grain: .035;
-  --glass-bg: rgba(255,255,255,.035);
-  --glass-border: rgba(255,255,255,.07);
-  --glass-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 24px 60px -34px rgba(0,0,0,.9);
+  --grain: .03;
+  --glass-bg: rgba(237,232,224,.03);
+  --glass-border: rgba(255,255,255,.06);
+  --glass-shadow: inset 0 1px 0 rgba(237,232,224,.05), 0 24px 60px -34px rgba(0,0,0,.9);
+  --btn-gradient: linear-gradient(120deg, #4E9E9A 0%, #5FB3AF 38%, #B8995A 78%, #C8A657 100%);
+  --headline-gradient: linear-gradient(110deg, #7CC9C5 0%, #E6DFD3 52%, #D9B45F 100%);
+  /* Charts: categorical slots in fixed order (validated for the dark
+     surface), a brand teal for single series, reserved status steps. */
+  --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70;
+  --series-4: #c98500; --series-5: #d55181; --series-6: #008300;
+  --series-brand: #6CC4C0;
+  --status-good: #0ca30c; --status-warning: #fab219; --status-critical: #d03b3b;
 }
 
 :root[data-theme='light'] {
   color-scheme: light;
-  --ink-950: 244 246 250; --ink-900: 255 255 255; --ink-850: 247 249 252;
-  --ink-800: 238 242 247; --ink-700: 226 232 240;
-  --frost-50: 11 18 32;   --frost-100: 23 34 53;  --frost-200: 43 58 82;
-  --frost-300: 74 90 116; --frost-400: 100 114 138;
-  --overlay: 15 23 42;
-  --glacier-200: 11 111 122; --glacier-300: 8 124 138;
-  --saffron-300: 180 83 9;
-  --amberz-100: 120 53 15; --amberz-200: 146 64 14; --amberz-300: 170 78 8;
-  --rose-200: 159 18 57; --rose-300: 190 18 60;
-  --emerald-300: 4 120 87; --sky-300: 3 105 161; --orange-300: 194 65 12;
-  --shadow: 100 116 139;
-  --grain: .018;
-  --glass-bg: rgba(255,255,255,.72);
-  --glass-border: rgba(15,23,42,.08);
-  --glass-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 20px 50px -30px rgba(15,23,42,.28);
+  --ink-950: 245 242 236; --ink-900: 252 250 246; --ink-850: 248 245 240;
+  --ink-800: 238 234 227; --ink-700: 226 221 212;
+  --frost-50: 24 30 42;   --frost-100: 36 42 55;  --frost-200: 54 61 76;
+  --frost-300: 82 88 102; --frost-400: 110 116 128;
+  --overlay: 24 30 42;
+  --glacier-200: 30 110 107; --glacier-300: 38 124 121; --glacier-400: 72 156 153;
+  --glacier-500: 56 140 137; --glacier-600: 44 118 116;
+  --saffron-300: 150 110 30;
+  --amberz-100: 110 72 20; --amberz-200: 128 88 26; --amberz-300: 146 104 34;
+  --amberz-400: 196 158 76; --amberz-500: 170 134 58;
+  --rose-200: 150 40 50; --rose-300: 172 52 62;
+  --emerald-300: 30 118 84; --sky-300: 30 100 140; --orange-300: 170 80 30;
+  --shadow: 100 104 112;
+  --grain: .016;
+  --glass-bg: rgba(252,250,246,.78);
+  --glass-border: rgba(24,30,42,.07);
+  --glass-shadow: inset 0 1px 0 rgba(252,250,246,.9), 0 20px 50px -30px rgba(24,30,42,.25);
+  --btn-gradient: linear-gradient(120deg, #4E9E9A 0%, #5FB3AF 38%, #B8995A 78%, #C8A657 100%);
+  --headline-gradient: linear-gradient(110deg, #2E7F7B 0%, #3B4252 52%, #A8842F 100%);
+  /* light-surface steps of the same categorical hues; three sit under 3:1,
+     so every chart ships a labelled legend table (the relief rule). */
+  --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a;
+  --series-4: #eda100; --series-5: #e87ba4; --series-6: #008300;
+  --series-brand: #3F8F8B;
+  --status-good: #0ca30c; --status-warning: #d4900a; --status-critical: #d03b3b;
 }
 
 * { -webkit-tap-highlight-color: transparent; }
@@ -51,15 +74,22 @@ html, body, #root { min-height: 100%; }
 body {
   @apply bg-ink-950 text-frost-100 font-sans antialiased;
   background-image:
-    radial-gradient(70% 50% at 15% -5%, rgba(56,201,214,.14), transparent 60%),
-    radial-gradient(50% 40% at 90% 0%, rgba(245,183,61,.10), transparent 60%),
-    radial-gradient(60% 50% at 50% 110%, rgba(99,102,241,.14), transparent 60%);
+    radial-gradient(70% 50% at 15% -5%, rgba(108,196,192,.10), transparent 60%),
+    radial-gradient(50% 40% at 90% 0%, rgba(217,180,95,.07), transparent 60%),
+    radial-gradient(60% 50% at 50% 110%, rgba(70,80,140,.10), transparent 60%);
   background-attachment: fixed;
   overflow-x: hidden;
   transition: background-color .4s ease, color .4s ease;
 }
 
 h1, h2, h3, .font-display { font-family: Poppins, Inter, system-ui, sans-serif; letter-spacing: -0.02em; }
+.font-serif-display { font-family: 'Playfair Display', Georgia, serif; letter-spacing: -0.01em; }
+/* Urdu: a Naskh face keeps line height close to the Latin layout */
+.font-urdu, :root[lang='ur'] body { font-family: 'Noto Naskh Arabic', Inter, system-ui, sans-serif; }
+:root[lang='ur'] h1, :root[lang='ur'] h2, :root[lang='ur'] h3, :root[lang='ur'] .font-display,
+:root[lang='ur'] .font-serif-display { font-family: 'Noto Naskh Arabic', Poppins, serif; letter-spacing: 0; }
+:root[lang='ur'] .tracking-\[\.14em\], :root[lang='ur'] .tracking-\[\.16em\],
+:root[lang='ur'] .tracking-\[\.18em\], :root[lang='ur'] .tracking-\[\.22em\] { letter-spacing: 0; }
 
 /* fine film grain keeps the large gradients from banding */
 body::after {
@@ -80,11 +110,11 @@ body::after {
     box-shadow: var(--glass-shadow);
   }
   .glass-strong {
-    @apply border border-white/[.1] bg-ink-900/80 backdrop-blur-2xl;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 32px 80px -40px rgba(0,0,0,.95);
+    @apply border border-white/[.07] bg-ink-900/80 backdrop-blur-2xl;
+    box-shadow: inset 0 1px 0 rgba(237,232,224,.05), 0 32px 80px -40px rgba(0,0,0,.95);
   }
   .chip {
-    @apply inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[.04]
+    @apply inline-flex items-center gap-1.5 rounded-full border border-white/[.07] bg-white/[.04]
            px-3 py-1 text-[11px] font-medium tracking-wide text-frost-200;
   }
   .btn {
@@ -92,14 +122,21 @@ body::after {
            transition-all duration-300 active:scale-[.97] disabled:opacity-40 disabled:pointer-events-none;
   }
   .btn-primary {
-    @apply btn text-abyss;
-    background: linear-gradient(120deg, #7ee0e6, #38c9d6 45%, #f5b73d);
-    box-shadow: 0 14px 40px -16px rgba(56,201,214,.7);
+    @apply btn overflow-hidden text-abyss;
+    background: var(--btn-gradient);
+    box-shadow: 0 12px 34px -18px rgba(108,196,192,.55);
   }
-  .btn-primary:hover { box-shadow: 0 18px 50px -14px rgba(56,201,214,.85); transform: translateY(-1px); }
-  .btn-ghost { @apply btn border border-white/10 bg-white/[.04] text-frost-100 hover:bg-white/[.08]; }
+  /* A soft band of light that sweeps across on hover */
+  .btn-primary::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(105deg, transparent 30%, rgba(255,250,240,.38) 50%, transparent 70%);
+    transform: translateX(-120%); transition: transform .8s cubic-bezier(.22,1,.36,1);
+  }
+  .btn-primary:hover::after { transform: translateX(120%); }
+  .btn-primary:hover { box-shadow: 0 16px 40px -16px rgba(108,196,192,.7); transform: translateY(-1px); }
+  .btn-ghost { @apply btn border border-white/[.08] bg-white/[.04] text-frost-100 hover:bg-white/[.08]; }
   .field {
-    @apply w-full rounded-xl border border-white/10 bg-ink-900/70 px-4 py-3 text-sm text-frost-50
+    @apply w-full rounded-xl border border-white/[.08] bg-ink-900/70 px-4 py-3 text-sm text-frost-50
            outline-none transition placeholder:text-frost-400/70
            focus:border-glacier-400/60 focus:ring-4 focus:ring-glacier-400/10;
   }
@@ -111,7 +148,7 @@ body::after {
 
 @layer utilities {
   .text-gradient {
-    background: linear-gradient(115deg, rgb(var(--frost-50)) 8%, #38c9d6 46%, #f5b73d 92%);
+    background: var(--headline-gradient);
     -webkit-background-clip: text; background-clip: text; color: transparent;
   }
   .mask-fade-r { mask-image: linear-gradient(to right, #000 75%, transparent); }
@@ -134,10 +171,10 @@ body::after {
 
 /* A photo hero keeps its dark treatment in both themes: the copy sits on the
    image, not on the page background. */
-.on-photo { --frost-50: 244 248 255; --frost-100: 228 237 251; --frost-200: 195 212 238;
-            --frost-300: 206 218 236; --frost-400: 170 188 214; --overlay: 255 255 255;
-            --glacier-200: 180 238 242; --glacier-300: 126 224 230;
-            --amberz-300: 252 215 127; --rose-200: 254 205 211; --rose-300: 253 164 175;
+.on-photo { --frost-50: 237 232 224; --frost-100: 226 221 213; --frost-200: 210 205 197;
+            --frost-300: 196 191 183; --frost-400: 160 163 168; --overlay: 237 232 224;
+            --glacier-200: 160 214 211; --glacier-300: 108 196 192;
+            --amberz-300: 227 196 126; --rose-200: 240 196 196; --rose-300: 226 150 150;
             --glass-bg: rgba(7,11,20,.38); --glass-border: rgba(255,255,255,.14);
             --glass-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 24px 60px -34px rgba(0,0,0,.9); }
 
@@ -147,7 +184,12 @@ body::after {
 .leaflet-popup-content { margin: 10px 12px; font-size: 12px; }
 .leaflet-control-attribution { font-size: 9px; }
 :root[data-theme='dark'] .leaflet-control-attribution { background: rgba(7,11,20,.7) !important; color: #93aed4; }
-:root[data-theme='dark'] .leaflet-control-attribution a { color: #7ee0e6; }
-:root[data-theme='dark'] .leaflet-bar a { background: #141d30; color: #e4edfb; border-color: #1c2740; }
+:root[data-theme='dark'] .leaflet-control-attribution a { color: #6CC4C0; }
+:root[data-theme='dark'] .leaflet-bar a { background: #141d30; color: #EDE8E0; border-color: #1c2740; }
 /* A dark basemap from the standard OSM tiles, no styled-tile API key needed */
 :root[data-theme='dark'] .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.9) contrast(.88) saturate(.7); }
+
+/* Hero: a slow Ken Burns zoom on the active slide (7 s slides, 9 s zoom so it
+   never visibly stops before the crossfade). */
+@keyframes nt-kenburns { from { transform: scale(1.02) translate3d(0,0,0); } to { transform: scale(1.12) translate3d(-1.2%, -1%, 0); } }
+.nt-kenburns { animation: nt-kenburns 9s ease-out forwards; }

@@ -34,7 +34,7 @@ export default function RestaurantMap({ center, items, selected, onSelect, label
       <TileLayer url={TILE_URL} attribution={ATTRIBUTION} maxZoom={19} />
       <FlyTo selected={selected} />
       <CircleMarker center={[center.lat, center.lon]} radius={9}
-                    pathOptions={{ color: '#f5b73d', weight: 3, fillColor: '#f5b73d', fillOpacity: 0.35 }}>
+                    pathOptions={{ color: '#D9B45F', weight: 3, fillColor: '#D9B45F', fillOpacity: 0.35 }}>
         <Tooltip direction="top" offset={[0, -8]}>{label}</Tooltip>
       </CircleMarker>
       {items.map((r) => {
@@ -42,7 +42,7 @@ export default function RestaurantMap({ center, items, selected, onSelect, label
         return (
           <CircleMarker key={r.id} center={[r.lat, r.lon]} radius={on ? 9 : 6}
                         eventHandlers={{ click: () => onSelect?.(r) }}
-                        pathOptions={{ color: on ? '#ffffff' : '#0d8c9c', weight: on ? 3 : 2, fillColor: '#38c9d6', fillOpacity: 0.9 }}>
+                        pathOptions={{ color: on ? '#EDE8E0' : '#3F8F8B', weight: on ? 3 : 2, fillColor: '#6CC4C0', fillOpacity: 0.9 }}>
             <Popup>
               <div className="font-semibold">{r.name}</div>
               <div className="opacity-70">{r.cuisine} · {r.distance_km} km</div>

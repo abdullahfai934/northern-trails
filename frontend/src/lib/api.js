@@ -99,6 +99,7 @@ export const api = {
   // --- photos & places ---
   photos: (q, count = 6) => req('/api/photos?' + new URLSearchParams({ q, count }), { timeout: 20000 }),
   restaurants: (destination) => req('/api/places/restaurants?' + new URLSearchParams({ destination }), { timeout: 60000 }),
+  restaurantsAt: (lat, lng) => req('/api/restaurants?' + new URLSearchParams({ lat, lng }), { timeout: 60000 }),
 
   // --- package admin (token sent per call, never stored in the bundle) ---
   adminStatus: () => req('/api/admin/status'),
@@ -123,7 +124,51 @@ export const api = {
 
   // --- accounts & push ---
   authConfig: () => req('/api/auth/config'),
-  me: () => req('/api/auth/me'),
+  me: () => req('/api/me'),
+  updateMe: (body) => req('/api/me', { method: 'PATCH', body }),
+  myBookings: () => req('/api/me/bookings'),
+  setWishlist: (ids) => req('/api/me/wishlist', { method: 'PUT', body: { ids } }),
+  notifications: () => req('/api/me/notifications'),
+  readNotifications: () => req('/api/me/notifications/read', { method: 'POST' }),
+  myReviews: () => req('/api/me/reviews'),
+  myPlans: () => req('/api/me/plans'),
+  savePlan: (body) => req('/api/me/plans', { method: 'POST', body }),
+  deletePlan: (id) => req(`/api/me/plans/${id}`, { method: 'DELETE' }),
+  aiPlan: (body) => req('/api/plan/ai', { method: 'POST', body, timeout: 90000 }),
+
+  // --- reviews ---
+  packageReviews: (id) => req(`/api/packages/${id}/reviews`),
+  addReview: (body) => req('/api/reviews', { method: 'POST', body }),
+  uploadPhoto: (file) => {
+    const form = new FormData()
+    form.append('file', file)
+    return req('/api/admin/images', { method: 'POST', body: form, timeout: 60000 })
+  },
+
+  // --- safety, recommendations, map ---
+  safety: () => req('/api/safety'),
+  recommendations: () => req('/api/recommendations'),
+  conditionsFor: (key) => req(`/api/conditions/${encodeURIComponent(key)}`),
+  pois: (kind, lat, lng, radius = 15000) => req('/api/places/pois?' + new URLSearchParams({ kind, lat, lng, radius }), { timeout: 60000 }),
+
+  // --- developer API keys (operators) ---
+  devKeys: () => req('/api/developer/keys'),
+  createDevKey: (label) => req('/api/developer/keys', { method: 'POST', body: { label } }),
+  revokeDevKey: (id) => req(`/api/developer/keys/${id}`, { method: 'DELETE' }),
+
+  // --- dashboard (admin / operator) ---
+  adminStats: () => req('/api/admin/stats'),
+  adminBookings: () => req('/api/admin/bookings'),
+  setBookingStatus: (id, status) => req(`/api/admin/bookings/${id}`, { method: 'PATCH', body: { status } }),
+  adminReviews: (status = '') => req('/api/admin/reviews' + (status ? `?status=${status}` : '')),
+  moderateReview: (id, status) => req(`/api/admin/reviews/${id}`, { method: 'PATCH', body: { status } }),
+  adminUsers: () => req('/api/admin/users'),
+  setRole: (uid, role, operator_id = '') => req(`/api/admin/users/${uid}`, { method: 'PATCH', body: { role, operator_id } }),
+  setRouteStatus: (id, status, status_note) => req(`/api/admin/routes/${id}`, { method: 'PATCH', body: { status, status_note } }),
+  editOperator: (id, body) => req(`/api/admin/operators/${id}`, { method: 'PATCH', body }),
+  savePackage: (id, body) => (id ? req(`/api/admin/packages/${id}`, { method: 'PUT', body })
+                                 : req('/api/admin/packages', { method: 'POST', body })),
+  deletePackage: (id) => req(`/api/admin/packages/${id}`, { method: 'DELETE' }),
   registerDevice: (body) => req('/api/devices/register', { method: 'POST', body }),
 
   // --- payments ---
@@ -145,6 +190,9 @@ export const api = {
  * a link that silently returns the SPA shell is worse than no link.
  */
 export const apiDocsUrl = BASE ? `${BASE}/api/docs` : ''
+
+/** The API's public origin, for the developer docs and share links. */
+export const apiBase = () => BASE || window.location.origin
 
 /** Uploaded images are served by the API; absolute URLs pass through. */
 export const assetUrl = (u) => (u && u.startsWith('/api/') ? BASE + u : u)

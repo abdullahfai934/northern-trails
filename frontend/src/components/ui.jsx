@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useInView, useMotionValue, useSpring, useTransform } from 'framer-motion'
 import { AlertCircle, RotateCcw, X } from 'lucide-react'
 import { STATUS } from '../lib/api'
+import { useTranslation } from 'react-i18next'
 
 export const ease = [0.22, 1, 0.36, 1]
 
@@ -45,6 +46,9 @@ export const item = {
 
 /* ------------------------------------------------------------- headings */
 export function SectionTitle({ eyebrow, title, sub, right }) {
+  const { t } = useTranslation()
+  const tr = (x) => (typeof x === 'string' ? t(x) : x)
+  eyebrow = tr(eyebrow); title = tr(title); sub = tr(sub)
   return (
     <div className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
       <div>

@@ -1,6 +1,7 @@
 """Northern Trails API — marketplace, live conditions, real-time matching, AI assistant."""
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import pathlib
@@ -16,10 +17,12 @@ from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Resp
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
-from . import admin, assistant, auth, data, photos, places, planner, push
+from . import (accounts, admin, alerts, assistant, auth, dashboard, data, devapi, photos,
+               places, planner, push, safety, tripai)
 from . import payments as pay
 from .config import PAYMENTS_RETURN_URL, feature_report
-from .db import repo
+from .geo import ROUTE_ENDPOINTS
+from .db import records, repo
 from .db import session as dbsession
 from .matching import RESPONSE_WINDOW_SEC, hub
 from .sources.poller import poller
@@ -30,6 +33,9 @@ app = FastAPI(title="Northern Trails API", version="1.0.0",
               description="AI-powered tour marketplace & live conditions assistant for Northern Pakistan")
 
 app.include_router(admin.router)
+app.include_router(accounts.router)
+app.include_router(dashboard.router)
+app.include_router(devapi.router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -171,7 +177,7 @@ def bootstrap():
     return {
         "packages": [data.package_with_operator(p) for p in data.PACKAGES],
         "operators": data.OPERATORS,
-        "routes": data.ROUTES,
+        "routes": [{**r, "endpoints": ROUTE_ENDPOINTS.get(r["id"])} for r in data.ROUTES],
         "alerts": data.ALERTS,
         "weather": data.WEATHER,
         "services": data.SERVICE_TYPES,
@@ -181,7 +187,7 @@ def bootstrap():
     }
 
 
-@app.get("/api/packages")
+@app.get("/api/packages", dependencies=[Depends(devapi.rate_limited)])
 def list_packages(
     q: str = "",
     destination: str = "",
@@ -218,7 +224,7 @@ def list_packages(
     return {"count": len(items), "items": items}
 
 
-@app.get("/api/packages/{package_id}")
+@app.get("/api/packages/{package_id}", dependencies=[Depends(devapi.rate_limited)])
 def get_package(package_id: str):
     pkg = next((p for p in data.PACKAGES if p["id"] == package_id), None)
     if not pkg:
@@ -265,13 +271,42 @@ async def uploaded_image(image_id: str):
                     headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
 
-@app.get("/api/destinations")
+@app.get("/api/destinations", dependencies=[Depends(devapi.rate_limited)])
 def list_destinations():
-    """Destination catalogue, each with its current Travel Condition Score."""
+    """Destination catalogue, each with its Safety Score and Travel Condition Score."""
     return {"items": [
-        {**d, "travel_condition": planner.travel_condition(d)}
+        {**d, "safety": safety.score(d), "travel_condition": planner.travel_condition(d)}
         for d in data.DESTINATIONS
     ]}
+
+
+@app.get("/api/restaurants", dependencies=[Depends(devapi.rate_limited)])
+async def restaurants_near(lat: float = Query(..., ge=-90, le=90), lng: float = Query(..., ge=-180, le=180)):
+    """Restaurants near a point, nearest first (public API shape)."""
+    return await places.nearby("", lat, lng)
+
+
+@app.get("/api/places/pois")
+async def points_of_interest(kind: str, lat: float = Query(..., ge=-90, le=90),
+                             lng: float = Query(..., ge=-180, le=180),
+                             radius: int = Query(15000, ge=500, le=50000)):
+    """Hospitals, petrol pumps, police stations or hotels near a point."""
+    result = await places.pois(kind, lat, lng, radius)
+    if not result["ok"] and "kind must be" in result.get("error", ""):
+        raise HTTPException(422, result["error"])
+    return result
+
+
+@app.get("/api/safety")
+def safety_scores():
+    """Safety Score out of 100 for every destination, with its working."""
+    return {"items": safety.all_scores()}
+
+
+@app.get("/api/recommendations")
+def recommendations():
+    """Best places to visit this week, from the forecast, roads and season."""
+    return {"items": safety.recommendations()}
 
 
 @app.get("/api/destinations/{destination_id}")
@@ -299,6 +334,53 @@ def plan_trip(body: PlanIn):
     )
 
 
+class AiPlanIn(BaseModel):
+    days: int = Field(..., ge=1, le=21)
+    budget_pkr: int = Field(0, ge=0, le=10_000_000)
+    people: int = Field(2, ge=1, le=40)
+    start_city: str = Field("Islamabad", max_length=60)
+    interests: List[str] = Field(default_factory=list, max_length=10)
+    destination: str = Field("", max_length=60)
+    travel_date: str = Field("", max_length=10)
+
+
+@app.post("/api/plan/ai")
+async def ai_plan(body: AiPlanIn, user: auth.Identity = Depends(auth.require_user)):
+    """A day-by-day itinerary built from real packages, restaurants and
+    destinations. Costs are computed here, never by the model."""
+    return await tripai.build(body.model_dump())
+
+
+class SavePlanIn(BaseModel):
+    title: str = Field(..., min_length=2, max_length=200)
+    brief: dict = Field(default_factory=dict)
+    plan: dict
+
+
+@app.get("/api/me/plans")
+async def my_plans(user: auth.Identity = Depends(auth.require_user)):
+    return {"items": await records.plans(user.uid)}
+
+
+@app.post("/api/me/plans", status_code=201)
+async def save_plan(body: SavePlanIn, user: auth.Identity = Depends(auth.require_user)):
+    pid = str(body.plan.get("id") or "") or "plan-" + uuid.uuid4().hex[:10]
+    existing = await records.plan(pid)
+    if existing and existing["uid"] != user.uid:
+        pid = "plan-" + uuid.uuid4().hex[:10]
+    return await records.save_plan({"id": pid, "uid": user.uid, "title": body.title.strip(),
+                                    "brief": body.brief, "plan": {**body.plan, "id": pid}})
+
+
+@app.delete("/api/me/plans/{plan_id}")
+async def delete_plan(plan_id: str, user: auth.Identity = Depends(auth.require_user)):
+    existing = await records.plan(plan_id)
+    if not existing or existing["uid"] != user.uid:
+        raise HTTPException(404, "Plan not found")
+    await records.delete_plan(plan_id)
+    return {"deleted": plan_id}
+
+
 @app.get("/api/plan/methodology")
 def plan_methodology():
     """How the Travel Condition Score is calculated, weights included."""
@@ -306,7 +388,7 @@ def plan_methodology():
 
 
 @app.post("/api/bookings")
-async def create_booking(body: BookingIn, user: auth.Identity = Depends(auth.current_user)):
+async def create_booking(body: BookingIn, user: auth.Identity = Depends(auth.require_user)):
     """Create a booking in `pending_payment`; checkout confirms it."""
     pkg = next((p for p in data.PACKAGES if p["id"] == body.package_id), None)
     if not pkg:
@@ -323,7 +405,7 @@ async def create_booking(body: BookingIn, user: auth.Identity = Depends(auth.cur
     stored = await repo.create_booking({
         "id": booking_id, "package_id": pkg["id"],
         "uid": None if user.anonymous else user.uid,
-        "traveler_name": body.traveler_name, "email": body.email,
+        "traveler_name": body.traveler_name, "email": body.email or user.email,
         "phone": body.phone or user.phone, "start_date": body.start_date,
         "travelers": travelers, "total_pkr": total,
         "status": "pending_payment", "condition_warnings": warnings,
@@ -345,16 +427,20 @@ async def create_booking(body: BookingIn, user: auth.Identity = Depends(auth.cur
 
 
 @app.get("/api/bookings/{booking_id}")
-async def get_booking(booking_id: str):
-    row = await repo.get_booking(booking_id)
+async def get_booking(booking_id: str, user: auth.Identity = Depends(auth.current_user)):
+    """A booking, for its owner or for staff. Bookings hold names and phone
+    numbers, so a guessed id must not be enough to read one."""
+    row = await records.booking(booking_id)
     if not row:
-        raise HTTPException(404, "Booking not found (no database configured, or unknown id)")
+        raise HTTPException(404, "Booking not found")
+    owner = row.get("uid")
+    if owner and not (user.uid == owner or user.role in ("admin", "operator")):
+        raise HTTPException(404, "Booking not found")
     return {
-        "booking_id": row.id, "package_id": row.package_id, "status": row.status,
-        "total_pkr": row.total_pkr, "travelers": row.travelers,
-        "traveler_name": row.traveler_name, "start_date": row.start_date,
-        "condition_warnings": row.condition_warnings,
-        "created_at": row.created_at.isoformat() if row.created_at else "",
+        "booking_id": row["id"], "package_id": row["package_id"], "status": row["status"],
+        "total_pkr": row["total_pkr"], "travelers": row["travelers"],
+        "traveler_name": row["traveler_name"], "start_date": row["start_date"],
+        "condition_warnings": row["condition_warnings"], "created_at": row["created_at"],
     }
 
 
@@ -383,12 +469,27 @@ async def refresh_conditions():
     return await poller.refresh_all()
 
 
-@app.get("/api/conditions/{route_id}")
-def condition(route_id: str):
-    r = data.route_index().get(route_id)
-    if not r:
-        raise HTTPException(404, "Route not found")
-    return {**r, "alerts": [a for a in data.ALERTS if route_id in a["routes"]]}
+@app.get("/api/conditions/{key}", dependencies=[Depends(devapi.rate_limited)])
+def condition(key: str):
+    """Conditions for a destination (id or name): weather, earthquakes within
+    100 km this week, road status and the Safety Score. A route id returns
+    that road with its alerts."""
+    r = data.route_index().get(key)
+    if r:
+        return {**r, "alerts": [a for a in data.ALERTS if key in a["routes"]]}
+    dest = data.destination_index().get(key) or data.destination_by_name(key.replace("-", " "))
+    if not dest:
+        raise HTTPException(404, "No destination or route with that id. Try /api/destinations.")
+    score = safety.score(dest)
+    return {
+        "destination": {k: dest[k] for k in ("id", "name", "lat", "lon", "elevation_m")},
+        "weather": score["parts"]["weather"]["reading"],
+        "earthquakes": score["parts"]["earthquakes"]["events"],
+        "roads": score["parts"]["road"]["routes"],
+        "alerts": [a for a in data.ALERTS if set(a.get("routes", [])) & set(dest["routes"])],
+        "safety": {k: score[k] for k in ("score", "level", "label", "color", "summary")},
+        "computed_at": score["computed_at"],
+    }
 
 
 @app.get("/api/operators")
@@ -441,7 +542,9 @@ def get_trip(request_id: str):
 
 
 @app.post("/api/trips/{request_id}/offer")
-async def make_offer(request_id: str, body: OfferIn):
+async def make_offer(request_id: str, body: OfferIn,
+                     user: auth.Identity = Depends(auth.require_role("operator"))):
+    _act_as(user, body.operator_id)
     offer = await hub.offer(request_id, body.operator_id, body.price_pkr, body.eta_min, body.message)
     if not offer:
         raise HTTPException(409, "Request is no longer open")
@@ -449,7 +552,9 @@ async def make_offer(request_id: str, body: OfferIn):
 
 
 @app.post("/api/trips/{request_id}/reject")
-async def reject_offer(request_id: str, body: RejectIn):
+async def reject_offer(request_id: str, body: RejectIn,
+                       user: auth.Identity = Depends(auth.require_role("operator"))):
+    _act_as(user, body.operator_id)
     await hub.reject(request_id, body.operator_id, body.reason)
     return {"ok": True}
 
@@ -475,8 +580,14 @@ def _require_operator(operator_id: str) -> dict:
     return op
 
 
+def _act_as(user: auth.Identity, operator_id: str) -> None:
+    """An operator account may only act for its own operator; admins for any."""
+    if user.role != "admin" and user.operator_id != operator_id:
+        raise HTTPException(403, "This operator console belongs to another operator.")
+
+
 @app.get("/api/operators/{operator_id}/jobs")
-def operator_jobs(operator_id: str):
+def operator_jobs(operator_id: str, user: auth.Identity = Depends(auth.require_role("operator"))):
     """This operator's own work queue.
 
     Scoped deliberately: `open` lists only requests actually dispatched to
@@ -484,6 +595,7 @@ def operator_jobs(operator_id: str):
     platform, which would let anyone bid on work never offered to them.
     """
     op = _require_operator(operator_id)
+    _act_as(user, operator_id)
     return {
         "operator_id": operator_id,
         "operator": op["name"],
@@ -507,8 +619,10 @@ def operator_detail(operator_id: str):
 
 
 @app.post("/api/operators/{operator_id}/availability")
-def set_availability(operator_id: str, body: AvailabilityIn):
+def set_availability(operator_id: str, body: AvailabilityIn,
+                     user: auth.Identity = Depends(auth.require_role("operator"))):
     _require_operator(operator_id)
+    _act_as(user, operator_id)
     hub.set_availability(operator_id, body.available)
     return {"operator_id": operator_id, "available": body.available,
             "open_jobs": len(hub.open_jobs_for(operator_id))}
@@ -711,6 +825,7 @@ async def on_startup():
             loaded = await admin.load_saved_packages()
             if loaded:
                 log.info("loaded %d packages saved from the admin screen", loaded)
+            await _load_saved_state()
         except Exception:
             # A database problem must not stop the app booting: it falls
             # back to the in-memory layer, which is fully functional.
@@ -718,8 +833,37 @@ async def on_startup():
     else:
         log.info("no DATABASE_URL — using the in-memory data layer")
 
+    try:
+        await accounts.apply_review_ratings()
+    except Exception:
+        log.exception("could not apply review ratings")
     poller.on_route_change = _route_changed
     poller.start()
+    global _alert_task
+    if os.environ.get("ALERTS_ENABLED", "1").lower() in ("1", "true", "yes"):
+        _alert_task = asyncio.create_task(alerts.loop())
+
+
+_alert_task = None
+
+
+async def _load_saved_state() -> None:
+    """Road statuses and operator edits as last saved, over the seed data.
+
+    The first boot writes the seed into the database; from then on the
+    database is the record, so a status an operator set — and when they set
+    it — survives restarts and redeploys."""
+    ridx = data.route_index()
+    for row in await records.stored_routes():
+        r = ridx.get(row["id"])
+        if r:
+            r.update({k: row[k] for k in ("status", "status_note", "source", "origin", "updated_by",
+                                          "updated_at") if row.get(k) not in (None, "")})
+    oidx = data.operator_index()
+    for row in await records.stored_operators():
+        o = oidx.get(row["id"])
+        if o:
+            o.update({k: v for k, v in row.items() if v not in (None, "")})
 
 
 async def _route_changed(route: dict, previous: str, current: str) -> None:
@@ -740,6 +884,8 @@ async def _route_changed(route: dict, previous: str, current: str) -> None:
 
 @app.on_event("shutdown")
 async def on_shutdown():
+    if _alert_task:
+        _alert_task.cancel()
     await poller.stop()
     if dbsession.enabled():
         await dbsession.dispose()

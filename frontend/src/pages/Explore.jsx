@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { useSearchParams } from 'react-router-dom'
 import { SlidersHorizontal, Search, X } from 'lucide-react'
 
 import { useData } from '../lib/store'
@@ -18,7 +19,8 @@ const SORTS = [
 export default function Explore() {
   const d = useData()
   const [q, setQ] = useState('')
-  const [destination, setDestination] = useState('')
+  const [params] = useSearchParams()
+  const [destination, setDestination] = useState(() => params.get('destination') || '')
   const [pickup, setPickup] = useState('')
   const [maxPrice, setMaxPrice] = useState(320000)
   const [maxDays, setMaxDays] = useState(14)

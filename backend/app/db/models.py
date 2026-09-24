@@ -70,6 +70,8 @@ class Route(Base):
     #: "seed" until a live source overwrites it, then the adapter name
     origin: Mapped[str] = mapped_column(String(32), default="seed")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    #: who last set the status by hand (an operator or admin name), if anyone
+    updated_by: Mapped[str] = mapped_column(String(120), default="")
     #: the drivable corridor, for spatial queries against hazards
     path: Mapped[object] = mapped_column(
         Geography(geometry_type="LINESTRING", srid=4326), nullable=True)
@@ -268,3 +270,76 @@ class Payment(Base):
         DateTime(timezone=True), nullable=True)
 
     booking: Mapped[Booking] = relationship(back_populates="payments")
+
+
+# ------------------------------------------------------------ reviews/plans
+class Review(Base):
+    """A traveler's rating of a package (and its operator) after the trip.
+
+    Only a booking that has run its course may be reviewed, once. Reviews
+    are `pending` until an admin approves them; only approved ones count
+    towards a package's rating.
+    """
+    __tablename__ = "reviews"
+    __table_args__ = (UniqueConstraint("booking_id", name="uq_review_booking"),)
+
+    id: Mapped[str] = mapped_column(String(48), primary_key=True)
+    booking_id: Mapped[str] = mapped_column(ForeignKey("bookings.id"), index=True)
+    package_id: Mapped[str] = mapped_column(String(64), index=True)
+    operator_id: Mapped[str] = mapped_column(String(64), index=True)
+    uid: Mapped[str] = mapped_column(String(128), index=True)
+    author: Mapped[str] = mapped_column(String(120), default="")
+    rating: Mapped[int] = mapped_column(Integer)
+    guide_rating: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    text: Mapped[str] = mapped_column(Text, default="")
+    photos: Mapped[list] = mapped_column(JSONB, default=list)
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class TripPlan(Base):
+    """A saved AI trip plan: the brief the traveler gave, and the plan."""
+    __tablename__ = "trip_plans"
+
+    id: Mapped[str] = mapped_column(String(48), primary_key=True)
+    uid: Mapped[str] = mapped_column(String(128), index=True)
+    title: Mapped[str] = mapped_column(String(200), default="")
+    brief: Mapped[dict] = mapped_column(JSONB, default=dict)
+    plan: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),
+                                                 default=utcnow, onupdate=utcnow)
+
+
+class Notification(Base):
+    """An alert sent to one user. `key` de-duplicates: the same closure on the
+    same booking is only ever announced once."""
+    __tablename__ = "notifications"
+    __table_args__ = (UniqueConstraint("uid", "key", name="uq_notification_key"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    uid: Mapped[str] = mapped_column(String(128), index=True)
+    key: Mapped[str] = mapped_column(String(200))
+    kind: Mapped[str] = mapped_column(String(32))
+    title: Mapped[str] = mapped_column(String(240))
+    body: Mapped[str] = mapped_column(Text, default="")
+    link: Mapped[str] = mapped_column(String(300), default="")
+    channels: Mapped[list] = mapped_column(JSONB, default=list)
+    read: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ApiKey(Base):
+    """A developer API key. Only its SHA-256 is stored; the key itself is
+    shown once, when it is created."""
+    __tablename__ = "api_keys"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    uid: Mapped[str] = mapped_column(String(128), index=True)
+    label: Mapped[str] = mapped_column(String(80), default="")
+    prefix: Mapped[str] = mapped_column(String(16))
+    key_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    requests: Mapped[int] = mapped_column(Integer, default=0)
+    revoked: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
