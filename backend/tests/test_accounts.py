@@ -319,3 +319,9 @@ def test_cron_run_needs_the_token(client, monkeypatch):
     r = client.post("/api/cron/run", headers={"X-Cron-Token": "s3cret-cron"})
     assert r.status_code == 200
     assert r.json() == {"ok": True, "refreshed": {"refreshed": True}, "alerts": {"new_alerts": 0}}
+
+
+def test_rate_limit_headers_are_readable_cross_origin(client):
+    r = client.get("/api/destinations", headers={"Origin": "https://northern-trails-fyp.web.app"})
+    exposed = r.headers.get("access-control-expose-headers", "")
+    assert "X-RateLimit-Remaining" in exposed and "X-RateLimit-Limit" in exposed

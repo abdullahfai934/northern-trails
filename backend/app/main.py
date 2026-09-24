@@ -44,6 +44,10 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # The site and the API live on different domains, and browsers hide
+    # non-standard response headers across origins unless they are listed.
+    expose_headers=["X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset",
+                    "Retry-After"],
 )
 
 
