@@ -72,10 +72,10 @@ class UsgsSource(Source):
                 "id": "usgs-" + str(feature.get("id", "")),
                 "severity": severity_for(float(mag)),
                 "kind": "Earthquake",
-                "title": f"M{mag} earthquake — {place}",
+                "title": f"M{mag} earthquake near {place}",
                 "body": (f"Magnitude {mag} at {depth:.0f} km depth, {place}. "
                          "Recent seismic activity raises rockfall and landslide risk on "
-                         "nearby mountain roads — check the road status before travelling."),
+                         "nearby mountain roads, so check the road status before travelling."),
                 "routes": routes,
                 "source": "USGS Earthquake Hazards Program",
                 "source_url": props.get("url") or self.source_url,

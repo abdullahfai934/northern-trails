@@ -78,7 +78,7 @@ def parse(html: str, source_url: str = NHA_URL) -> list[dict]:
         cells = [re.sub(r"\s+", " ", td.get_text(" ")).strip() for td in tr.find_all(["td", "th"])]
         cells = [c for c in cells if c]
         if len(cells) >= 2:
-            candidates.append(" — ".join(cells))
+            candidates.append(". ".join(cells))
     for node in soup.find_all(["li", "p"]):
         txt = re.sub(r"\s+", " ", node.get_text(" ")).strip()
         if 15 <= len(txt) <= 400:

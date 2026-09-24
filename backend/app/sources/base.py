@@ -86,8 +86,8 @@ class Source:
             return SourceResult(self.name, "live", items=items, source_url=self.source_url)
         except httpx.HTTPStatusError as exc:
             code = exc.response.status_code
-            hint = {401: " (credentials rejected — check the API key)",
-                    403: " (blocked — the site refuses automated requests)",
+            hint = {401: " (credentials rejected, check the API key)",
+                    403: " (blocked, the site refuses automated requests)",
                     429: " (rate limited)"}.get(code, "")
             log.warning("%s: HTTP %s%s", self.name, code, hint)
             return SourceResult(self.name, "fallback", error=f"HTTP {code}{hint}",
