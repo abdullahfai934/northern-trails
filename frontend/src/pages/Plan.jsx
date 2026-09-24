@@ -393,9 +393,10 @@ function Component({ name, comp }) {
 
       <div className="h-1.5 overflow-hidden rounded-full bg-white/[.06]">
         <motion.div
-          className="h-full rounded-full bg-gradient-to-r from-glacier-400 to-glacier-300"
-          initial={{ width: 0 }}
-          animate={{ width: `${Math.min(100, comp.score)}%` }}
+          className="h-full origin-left rounded-full bg-gradient-to-r from-glacier-400 to-glacier-300 rtl:origin-right"
+          style={{ width: `${Math.min(100, comp.score)}%` }}
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: 1 }}
           transition={{ duration: 0.9, ease }}
         />
       </div>

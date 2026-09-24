@@ -34,7 +34,7 @@ export function ScrollProgress() {
   return (
     <motion.div
       style={{ scaleX: x }}
-      className="fixed inset-x-0 top-0 z-[80] h-[2px] origin-left bg-gradient-to-r from-glacier-300 via-glacier-400 to-amberz-400"
+      className="fixed inset-x-0 top-0 z-[80] h-[2px] origin-left bg-gradient-to-r from-glacier-300 via-glacier-400 to-amberz-400 rtl:origin-right rtl:bg-gradient-to-l"
     />
   )
 }

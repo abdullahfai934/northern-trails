@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CircleMarker, MapContainer, Polyline, Popup, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
+import { CircleMarker, MapContainer, Marker, Pane, Polyline, Popup, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
+import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import {
   Activity, Building2, Fuel, Hospital, Loader2, MapPin, Package, Route as RouteIcon, Search, Shield, Utensils,
@@ -64,10 +65,82 @@ function Tracker({ onMove }) {
   return null
 }
 
+const reducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+
+/** A slow, smooth camera flight to the chosen destination. */
 function FlyTo({ target }) {
   const map = useMap()
-  useEffect(() => { if (target) map.flyTo(target, 12, { duration: 0.9 }) }, [map, target])
+  useEffect(() => {
+    if (!target) return
+    if (reducedMotion()) map.setView(target, 12, { animate: false })
+    else map.flyTo(target, 12, { duration: 1.7, easeLinearity: 0.15 })
+  }, [map, target])
   return null
+}
+
+/**
+ * Each layer lives in its own map pane, so turning it on or off fades the
+ * whole pane (opacity only) instead of popping. A layer stays mounted once it
+ * has been shown; a hidden pane is also taken out of hit-testing.
+ */
+function FadePane({ name, visible, z, children }) {
+  const [mounted, setMounted] = useState(visible)
+  useEffect(() => { if (visible) setMounted(true) }, [visible])
+  if (!mounted) return null
+  return (
+    <Pane name={name} className="nt-pane" style={{ zIndex: z, opacity: 0 }}>
+      <PaneFader name={name} visible={visible} />
+      {children}
+    </Pane>
+  )
+}
+
+function PaneFader({ name, visible }) {
+  const map = useMap()
+  useEffect(() => {
+    const el = map.getPane(name)
+    if (!el) return undefined
+    let raf = 0
+    let timer = 0
+    if (visible) {
+      el.style.visibility = 'visible'
+      raf = requestAnimationFrame(() => { raf = requestAnimationFrame(() => { el.style.opacity = '1' }) })
+    } else {
+      el.style.opacity = '0'
+      timer = setTimeout(() => { el.style.visibility = 'hidden' }, 480)
+    }
+    return () => { cancelAnimationFrame(raf); clearTimeout(timer) }
+  }, [map, name, visible])
+  return null
+}
+
+/** A road draws itself from start to end the first time it appears. */
+function drawIn(e) {
+  const path = e.target.getElement?.()
+  if (!path || reducedMotion() || typeof path.getTotalLength !== 'function') return
+  const len = path.getTotalLength()
+  if (!len) return
+  path.style.strokeDasharray = `${len}`
+  path.style.strokeDashoffset = `${len}`
+  path.getBoundingClientRect()                       // commit the start state
+  path.style.transition = 'stroke-dashoffset 1.6s cubic-bezier(.22,1,.36,1)'
+  path.style.strokeDashoffset = '0'
+  const done = () => {
+    // Hand the stroke back to Leaflet (closed roads keep their dashes).
+    path.style.transition = ''; path.style.strokeDasharray = ''; path.style.strokeDashoffset = ''
+    path.removeEventListener('transitionend', done)
+  }
+  path.addEventListener('transitionend', done)
+}
+
+/** Expanding rings for a recent earthquake, sized by its magnitude. */
+const quakeIcons = {}
+function quakeIcon(mag = 4) {
+  const size = Math.round(22 + Math.max(0, mag - 3) * 10)
+  return (quakeIcons[size] ||= L.divIcon({
+    className: '', iconSize: [size, size],
+    html: `<div class="nt-quake" style="width:${size}px;height:${size}px"><span></span><span></span><span></span></div>`,
+  }))
 }
 
 export default function InteractiveMap() {
@@ -177,8 +250,9 @@ export default function InteractiveMap() {
           <Tracker onMove={(c) => setCenter({ lat: c.lat, lng: c.lng })} />
           <FlyTo target={fly} />
 
-          {on.has('roads') && (d.routes || []).map((r) => geoms[r.id] && (
-            <Polyline key={r.id} positions={geoms[r.id]}
+          <FadePane name="nt-roads" z={402} visible={on.has('roads')}>
+          {(d.routes || []).map((r) => geoms[r.id] && (
+            <Polyline key={r.id} positions={geoms[r.id]} eventHandlers={{ add: drawIn }}
               pathOptions={{ color: ROAD_COLOR[r.status] || '#6CC4C0', weight: r.status === 'closed' ? 6 : 4, opacity: 0.9, dashArray: r.status === 'closed' ? '8 8' : null }}>
               <Popup>
                 <div className="font-semibold">{r.name}</div>
@@ -187,15 +261,22 @@ export default function InteractiveMap() {
               </Popup>
             </Polyline>
           ))}
+          </FadePane>
 
-          {on.has('quakes') && quakes.map((q) => (
-            <CircleMarker key={q.id} center={[q.lat, q.lon]} radius={4 + (q.magnitude || 4) * 2}
-              pathOptions={{ color: '#d03b3b', fillColor: '#d03b3b', fillOpacity: 0.25, weight: 2 }}>
-              <Popup><div className="font-semibold">{q.title}</div><div className="opacity-70">{relTime(q.issued_at)} · {q.source}</div></Popup>
-            </CircleMarker>
+          <FadePane name="nt-quakes" z={404} visible={on.has('quakes')}>
+          {quakes.map((q) => (
+            <React.Fragment key={q.id}>
+              {!reducedMotion() && <Marker position={[q.lat, q.lon]} icon={quakeIcon(q.magnitude)} interactive={false} keyboard={false} />}
+              <CircleMarker center={[q.lat, q.lon]} radius={4 + (q.magnitude || 4) * 2}
+                pathOptions={{ color: '#d03b3b', fillColor: '#d03b3b', fillOpacity: 0.25, weight: 2 }}>
+                <Popup><div className="font-semibold">{q.title}</div><div className="opacity-70">{relTime(q.issued_at)} · {q.source}</div></Popup>
+              </CircleMarker>
+            </React.Fragment>
           ))}
+          </FadePane>
 
-          {(on.has('destinations') || on.has('packages')) && destinations.map((x) => (
+          <FadePane name="nt-destinations" z={406} visible={on.has('destinations') || on.has('packages')}>
+          {destinations.map((x) => (
             <CircleMarker key={x.id} center={[x.lat, x.lon]} radius={on.has('packages') ? 9 + Math.min(6, (pkgsByDest[x.name]?.length || 0) * 2) : 9}
               pathOptions={{ color: '#D9B45F', fillColor: '#D9B45F', fillOpacity: 0.45, weight: 2 }}>
               <Tooltip direction="top" offset={[0, -8]}>{x.name}</Tooltip>
@@ -208,8 +289,11 @@ export default function InteractiveMap() {
               </Popup>
             </CircleMarker>
           ))}
+          </FadePane>
 
-          {LAYERS.filter((l) => l.kind === 'nearby' && on.has(l.id)).map((l) => (pois[l.id] || []).map((p) => (
+          {LAYERS.filter((l) => l.kind === 'nearby').map((l, k) => (
+            <FadePane key={l.id} name={`nt-${l.id}`} z={408 + k} visible={on.has(l.id)}>
+            {(pois[l.id] || []).map((p) => (
             <CircleMarker key={`${l.id}-${p.id}`} center={[p.lat, p.lon]} radius={5}
               pathOptions={{ color: l.color, fillColor: l.color, fillOpacity: 0.85, weight: 1.5 }}>
               <Popup>
@@ -219,7 +303,9 @@ export default function InteractiveMap() {
                 <a href={p.directions_url} target="_blank" rel="noreferrer noopener">{t('Get directions')} →</a>
               </Popup>
             </CircleMarker>
-          )))}
+            ))}
+            </FadePane>
+          ))}
         </MapContainer>
       </div>
     </div>

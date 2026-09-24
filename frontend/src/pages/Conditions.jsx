@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
-  AlertTriangle, CloudSun, FileCheck2, Mountain, Route as RouteIcon,
+  AlertTriangle, FileCheck2, Mountain, Route as RouteIcon,
   ShieldAlert, Wind, Eye, Droplets, Gauge, ChevronDown, Loader2,
 } from 'lucide-react'
 
@@ -10,6 +10,7 @@ import { STATUS, api, relTime } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { Reveal, SectionTitle, Skeleton, StatusPill, Stagger, ease, item, useToast } from '../components/ui'
 import SourcePanel, { OriginTag } from '../components/SourcePanel'
+import { WeatherIcon } from '../components/motion'
 
 /** Operators and admins set a road's status; the change is stored with who and when. */
 function RouteEditor({ route, onSaved }) {
@@ -42,6 +43,9 @@ function RouteEditor({ route, onSaved }) {
     </form>
   )
 }
+
+/** A road whose status was set in the last six hours gets a soft pulse. */
+const changedRecently = (r) => r.updated_at && Date.now() - new Date(r.updated_at).getTime() < 6 * 3600e3
 
 export default function Conditions() {
   const d = useData()
@@ -136,8 +140,7 @@ export default function Conditions() {
                   <div className="truncate text-[12px] font-bold text-frost-50">{w.city}</div>
                   <div className="truncate text-[11px] text-frost-400">{w.condition}</div>
                 </div>
-                <CloudSun className="h-6 w-6 shrink-0 text-glacier-300 transition-transform duration-500 group-hover:scale-110"
-                          strokeWidth={1.6} />
+                <WeatherIcon condition={w.condition} className="transition-transform duration-500 group-hover:scale-110" />
               </div>
               <div className="mt-3 flex items-end gap-2">
                 <span className="font-mono text-3xl font-bold text-frost-50">{w.temp_c}°</span>
@@ -217,7 +220,11 @@ export default function Conditions() {
             <motion.div key={r.id} layout
               initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.45, delay: i * 0.04, ease }}
-              className="glass overflow-hidden rounded-2xl">
+              className="glass relative overflow-hidden rounded-2xl">
+              {changedRecently(r) && (
+                <span aria-hidden="true" className="nt-row-pulse pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-glacier-400/60"
+                      style={{ boxShadow: 'inset 0 0 24px rgb(var(--glacier-400) / .12)' }} />
+              )}
               <button onClick={() => setOpen(isOpen ? null : r.id)} className="flex w-full items-center gap-4 p-5 text-left">
                 <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${STATUS[r.status]?.bg}`}>
                   <RouteIcon className={`h-5 w-5 ${STATUS[r.status]?.tone}`} />

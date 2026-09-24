@@ -7,7 +7,8 @@ import { pkr, whatsappUrl } from '../lib/api'
 import { useWishlist } from '../lib/wishlist'
 import PlacePhoto from './PlacePhoto'
 import { sharePackage, usePackageActions } from './PackageActions'
-import { Stars, item, useToast } from './ui'
+import { Stars, ease, item, useToast } from './ui'
+import { useTilt } from './motion'
 
 function IconAction({ label, onClick, href, children, active = false }) {
   const cls = `grid h-9 w-9 place-items-center rounded-lg border transition-all duration-300
@@ -46,13 +47,18 @@ export default function PackageCard({ pkg, index = 0, eager = false, standalone 
     { const r = wish.toggle(pkg.id); if (r !== null) toast(r ? 'Saved to your wishlist' : 'Removed from your wishlist') }
   }
 
+  const tilt = useTilt({ max: 5 })
+
   return (
     <motion.article variants={standalone ? undefined : item} className="group h-full">
       <motion.div
         whileHover={{ y: -8 }}
-        transition={{ type: 'spring', stiffness: 260, damping: 22 }}
-        className="glass flex h-full flex-col overflow-hidden rounded-2xl transition-shadow duration-500 hover:shadow-glow"
+        transition={{ duration: 0.5, ease }}
+        {...tilt.bind}
+        style={tilt.style}
+        className="glass relative flex h-full flex-col overflow-hidden rounded-2xl transition-shadow duration-500 hover:shadow-glow"
       >
+        {tilt.spotlight}
         <div className="relative h-48 overflow-hidden">
           <Link to={`/explore/${pkg.id}`} aria-label={pkg.title} draggable="false" className="block h-full">
             <PlacePhoto query={pkg.photo_query || pkg.destination} name={pkg.destination} images={pkg.images}

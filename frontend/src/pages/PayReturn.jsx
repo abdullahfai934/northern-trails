@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { AlertTriangle, CheckCircle2, Loader2, XCircle } from 'lucide-react'
+import { SuccessCheck } from '../components/motion'
+import { AlertTriangle, Loader2, XCircle } from 'lucide-react'
 
 import { api, pkr } from '../lib/api'
 import { Reveal } from '../components/ui'
@@ -64,7 +65,7 @@ export default function PayReturn() {
           {state === 'done' && (
             <Outcome
               icon={confirmed
-                ? <CheckCircle2 className="h-7 w-7 text-glacier-300" />
+                ? <SuccessCheck size={28} className="text-glacier-300" />
                 : <XCircle className="h-7 w-7 text-rose-400" />}
               title={confirmed ? 'Booking confirmed' : 'Payment did not go through'}
               tone={confirmed ? 'glacier' : 'rose'}

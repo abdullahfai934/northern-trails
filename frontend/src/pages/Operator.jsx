@@ -12,6 +12,7 @@ import Guard from '../components/Guard'
 import { api, pkr, wsUrl } from '../lib/api'
 import { closeSocket } from '../lib/socket'
 import { Reveal, SectionTitle, ease, useToast } from '../components/ui'
+import { ArrivalGlow, slideIn, useDir } from '../components/motion'
 
 const WINDOW = 45
 
@@ -24,6 +25,7 @@ export default function Operator() {
 }
 
 function Console() {
+  const dir = useDir()
   const d = useData()
   const auth = useAuth()
   const toast = useToast()
@@ -183,7 +185,8 @@ function Console() {
             <Bell className="h-3.5 w-3.5 text-glacier-300" /> Incoming job requests
           </div>
 
-          <AnimatePresence initial={false}>
+          {/* popLayout: a job leaving is lifted out while the rest glide up (transforms, not height) */}
+          <AnimatePresence initial={false} mode="popLayout">
             {jobs.length === 0 && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 className="glass rounded-2xl p-10 text-center">
@@ -200,15 +203,12 @@ function Console() {
               const left = Math.max(0, Math.round((job._deadline - Date.now()) / 1000))
               const svc = d.services.find((s) => s.id === job.service)
               return (
-                <motion.div key={job.id} layout
-                  initial={{ opacity: 0, x: 40, scale: 0.97 }}
-                  animate={{ opacity: 1, x: 0, scale: 1 }}
-                  exit={{ opacity: 0, x: -40, height: 0, marginBottom: 0 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 26 }}
-                  className="glass mb-3 overflow-hidden rounded-2xl">
+                <motion.div key={job.id} layout {...slideIn(dir)}
+                  className="glass relative mb-3 overflow-hidden rounded-2xl">
+                  <ArrivalGlow />
                   <div className="h-0.5 bg-white/[.06]">
-                    <motion.div className={`h-full ${left < 12 ? 'bg-rose-400' : 'bg-glacier-400'}`}
-                      animate={{ width: `${(left / WINDOW) * 100}%` }} transition={{ duration: 1, ease: 'linear' }} />
+                    <motion.div className={`h-full origin-left rtl:origin-right ${left < 12 ? 'bg-rose-400' : 'bg-glacier-400'}`}
+                      initial={false} animate={{ scaleX: left / WINDOW }} transition={{ duration: 1, ease: 'linear' }} />
                   </div>
                   <div className="p-5">
                     <div className="flex flex-wrap items-start justify-between gap-3">

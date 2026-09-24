@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { AlertTriangle, Check, Loader2 } from 'lucide-react'
+import { AlertTriangle, Loader2 } from 'lucide-react'
+import { SuccessCheck } from './motion'
 
 import { api, pkr, postToGateway } from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -95,11 +95,7 @@ export default function BookingFlow({ pkg, onDone }) {
   if (confirmed) {
     return (
       <div className="space-y-5">
-        <motion.div initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                    transition={{ type: 'spring', stiffness: 260, damping: 18 }}
-                    className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-emerald-400/15 text-emerald-300">
-          <Check className="h-8 w-8" strokeWidth={3} />
-        </motion.div>
+        <SuccessCheck />
         <div className="text-center">
           <div className="text-[11px] font-semibold uppercase tracking-wide text-amberz-300">Held — payment required</div>
           <div className="mt-1 font-mono text-lg font-bold text-frost-50">{confirmed.booking_id}</div>

@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useEffect } from 'react'
 import { Route, Routes, useLocation } from 'react-router-dom'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, MotionConfig, motion } from 'framer-motion'
 
 import { BottomTabs, Footer, ScrollProgress, TopNav } from './components/Layout'
 import { DataProvider } from './lib/store'
@@ -61,6 +61,7 @@ function prefetchPages() {
   setTimeout(start, 12000)
 }
 import { ServerWaking } from './components/ServerWaking'
+import { MagneticButtons } from './components/motion'
 
 /** Pages fade and rise into place, and fade out upward — slow, ease-out, never bouncy. */
 const pageVariants = {
@@ -101,6 +102,9 @@ export default function App() {
   useEffect(prefetchPages, [])
   return (
     <ErrorBoundary>
+    {/* reducedMotion="user": with prefers-reduced-motion, every Framer
+        animation keeps its fades but drops movement and scaling. */}
+    <MotionConfig reducedMotion="user">
     <ThemeProvider>
     <DataProvider>
       <AuthProvider>
@@ -137,12 +141,14 @@ export default function App() {
         <BottomTabs />
         <SignInSheet />
         <ServerWaking />
+        <MagneticButtons />
       </PackageActionsProvider>
       </ToastHost>
       </WishlistProvider>
       </AuthProvider>
     </DataProvider>
     </ThemeProvider>
+    </MotionConfig>
     </ErrorBoundary>
   )
 }

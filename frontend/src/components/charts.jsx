@@ -38,6 +38,11 @@ export function SafetyGauge({ score = 0, color = 'yellow', label = '', size = 13
   const arc = 0.75                       // a 270° gauge, open at the bottom
   const s = STATUS[color] || STATUS.yellow
   const [shown, setShown] = useState(0)
+  // While the arc sweeps up, its colour follows the number through the same
+  // bands the server uses (red < 50, yellow < 75, green), so it lands on the
+  // score's real status colour.
+  const live = shown >= score ? s.color
+    : shown >= 75 ? STATUS.green.color : shown >= 50 ? STATUS.yellow.color : STATUS.red.color
 
   useEffect(() => {
     if (!show) return undefined
@@ -59,7 +64,8 @@ export function SafetyGauge({ score = 0, color = 'yellow', label = '', size = 13
       <svg width={size} height={size} className="-rotate-[225deg]">
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgb(var(--overlay) / .08)"
                 strokeWidth={stroke} strokeDasharray={`${c * arc} ${c}`} strokeLinecap="round" />
-        <motion.circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={s.color} strokeWidth={stroke}
+        <motion.circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={live} strokeWidth={stroke}
+          style={{ transition: 'stroke .35s ease-out' }}
           strokeLinecap="round" strokeDasharray={`${c * arc} ${c}`}
           initial={{ strokeDashoffset: c * arc }}
           animate={{ strokeDashoffset: show ? c * arc * (1 - score / 100) : c * arc }}
@@ -176,10 +182,11 @@ export function BarChart({ data, height = 200, format = (v) => v, color = 'var(-
           {data.map((d, i) => (
             <div key={d.label} className="relative flex h-full flex-1 items-end justify-center"
                  onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}>
-              <motion.div className="w-full max-w-[34px] rounded-t-[4px]"
-                style={{ background: color, opacity: hover == null || hover === i ? 1 : 0.55 }}
-                initial={{ height: 0 }} animate={{ height: show ? `${(d.value / top) * 100}%` : 0 }}
-                transition={{ duration: reduce ? 0 : 0.7, delay: reduce ? 0 : i * 0.04, ease }} />
+              {/* Grows with scaleY from the baseline: no layout work per frame. */}
+              <motion.div className="w-full max-w-[34px] origin-bottom rounded-t-[4px]"
+                style={{ background: color, opacity: hover == null || hover === i ? 1 : 0.55, height: `${(d.value / top) * 100}%` }}
+                initial={{ scaleY: 0 }} animate={{ scaleY: show ? 1 : 0 }}
+                transition={{ duration: reduce ? 0 : 0.8, delay: reduce ? 0 : i * 0.05, ease }} />
               {hover === i && (
                 <div className="absolute z-10 -translate-y-2 whitespace-nowrap rounded-lg bg-ink-800 px-2.5 py-1.5 text-[11.5px] text-frost-50 shadow-lift ring-1 ring-white/[.08]"
                      style={{ bottom: `${(d.value / top) * 100}%` }}>
@@ -212,8 +219,8 @@ export function RankBars({ data, format = (v) => v, color = 'var(--series-brand)
             <span className="font-mono tabular-nums text-frost-50">{format(d.value)}</span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-white/[.05]">
-            <motion.div className="h-full rounded-full" style={{ background: color }}
-              initial={{ width: 0 }} animate={{ width: show ? `${(d.value / max) * 100}%` : 0 }}
+            <motion.div className="h-full origin-left rounded-full rtl:origin-right" style={{ background: color, width: `${(d.value / max) * 100}%` }}
+              initial={{ scaleX: 0 }} animate={{ scaleX: show ? 1 : 0 }}
               transition={{ duration: reduce ? 0 : 0.8, delay: reduce ? 0 : i * 0.06, ease }} />
           </div>
         </div>

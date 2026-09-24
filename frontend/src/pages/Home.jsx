@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AnimatePresence, motion, useReducedMotion, useScroll, useTransform } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion'
 import {
   ArrowRight, Zap, Compass, ShieldCheck, Radio, Sparkles, AlertTriangle,
-  CloudSun, Route as RouteIcon, MessageSquareText, BadgeCheck, Gauge,
+  Route as RouteIcon, MessageSquareText, BadgeCheck, Gauge,
 } from 'lucide-react'
 
 import { useData } from '../lib/store'
@@ -14,6 +14,7 @@ import { SafetyGauge } from '../components/charts'
 import PackageCard from '../components/PackageCard'
 import PlacePhoto from '../components/PlacePhoto'
 import Carousel from '../components/Carousel'
+import { WeatherIcon } from '../components/motion'
 import { CountUp, ErrorState, Marquee, Reveal, SectionTitle, Skeleton, Stagger, StatusPill, WhenNear, ease, item } from '../components/ui'
 
 const SLIDES = [
@@ -26,7 +27,7 @@ const SLIDES = [
 
 /* ------------------------------------------------------------------ hero */
 /** Reveals a line word by word from below — once, on load. */
-function WordReveal({ text, delay = 0, className = '' }) {
+function WordReveal({ text, delay = 0, className = '', children }) {
   const reduce = useReducedMotion()
   return (
     <span className={className}>
@@ -39,7 +40,67 @@ function WordReveal({ text, delay = 0, className = '' }) {
           </motion.span>
         </span>
       ))}
+      {children}
     </span>
+  )
+}
+
+/**
+ * One pass of gold light over a line of the headline, after it has landed.
+ * A band-shaped window slides across while the gold copy inside slides the
+ * other way by the same amount, so the text stays put and only the light
+ * moves: both are plain transforms.
+ */
+function GoldShimmer({ text }) {
+  const reduce = useReducedMotion()
+  if (reduce) return null
+  // CSS keyframes (index.css, .nt-shimmer): runs on the compositor, mirrored
+  // in right-to-left.
+  return (
+    <span aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+      <span className="nt-shimmer-window absolute inset-0 block">
+        <span className="nt-shimmer-copy absolute inset-0 block">
+          <span className="nt-gold-text">
+            {text.split(' ').map((w, k) => (
+              <span key={k} className="-my-[0.1em] inline-block overflow-hidden pb-[0.22em] pt-[0.1em] align-bottom">
+                <span className="inline-block">{w}{'\u00A0'}</span>
+              </span>
+            ))}
+          </span>
+        </span>
+      </span>
+    </span>
+  )
+}
+
+/**
+ * Two slow banks of mist drifting across the lower hero, nearer than the
+ * photo. Decorative, so it starts only once the page has loaded and settled
+ * (fading in over two seconds), and pauses while the hero is off screen.
+ */
+function Mist({ y, x }) {
+  const ref = useRef(null)
+  const [on, setOn] = useState(false)
+  useEffect(() => {
+    let timer = 0
+    const start = () => { timer = setTimeout(() => setOn(true), 3500) }
+    if (document.readyState === 'complete') start()
+    else window.addEventListener('load', start, { once: true })
+    return () => { clearTimeout(timer); window.removeEventListener('load', start) }
+  }, [])
+  useEffect(() => {
+    const el = ref.current
+    if (!on || !el || typeof IntersectionObserver === 'undefined') return undefined
+    const io = new IntersectionObserver(([e]) => el.classList.toggle('nt-mist-paused', !e.isIntersecting))
+    io.observe(el)
+    return () => io.disconnect()
+  }, [on])
+  if (!on) return null
+  return (
+    <motion.div ref={ref} style={{ y, x }} className="nt-mist-in pointer-events-none absolute inset-0" aria-hidden="true">
+      <div className="nt-mist" style={{ background: 'radial-gradient(38% 42% at 30% 55%, rgba(237,232,224,.11), transparent 70%), radial-gradient(30% 34% at 74% 40%, rgba(237,232,224,.08), transparent 70%)' }} />
+      <div className="nt-mist nt-mist-b" style={{ background: 'radial-gradient(42% 40% at 60% 70%, rgba(237,232,224,.10), transparent 70%), radial-gradient(26% 30% at 16% 30%, rgba(237,232,224,.06), transparent 70%)' }} />
+    </motion.div>
   )
 }
 
@@ -52,7 +113,25 @@ function Hero({ alerts = [] }) {
   const reduce = useReducedMotion()
   const { scrollY } = useScroll()
   const y = useTransform(scrollY, [0, 700], [0, 160])
+  const mistY = useTransform(scrollY, [0, 700], [0, 260])     // nearer layer: moves faster
+  const copyY = useTransform(scrollY, [0, 700], [0, -60])
   const fade = useTransform(scrollY, [0, 460], [1, 0])
+
+  // Mouse parallax (desktop): the photo, the mist and the copy shift by
+  // different amounts, so the scene reads as layers of depth.
+  const mx = useSpring(0, { stiffness: 50, damping: 18 })
+  const my = useSpring(0, { stiffness: 50, damping: 18 })
+  const photoX = useTransform(mx, (v) => v * -16)
+  const photoY = useTransform(my, (v) => v * -10)
+  const mistX = useTransform(mx, (v) => v * -34)
+  const copyX = useTransform(mx, (v) => v * 8)
+  const fine = typeof window !== 'undefined' && window.matchMedia?.('(hover: hover) and (pointer: fine)').matches
+  const onMove = (e) => {
+    if (reduce || !fine) return
+    const r = e.currentTarget.getBoundingClientRect()
+    mx.set((e.clientX - r.left) / r.width - 0.5)
+    my.set((e.clientY - r.top) / r.height - 0.5)
+  }
 
   useEffect(() => {
     if (paused || reduce) return undefined
@@ -60,38 +139,54 @@ function Hero({ alerts = [] }) {
     return () => clearTimeout(timer)
   }, [i, paused, reduce])
 
-  // Fetch every slide's photo up front so each is decoded before it fades in.
+  // Fetch the later slides' photos once the page is idle, so each is
+  // decoded before it fades in without competing with the first paint.
   useEffect(() => {
-    SLIDES.forEach((s) => getPhotos(s.query, 1).then((items) => {
+    const idle = window.requestIdleCallback || ((f) => setTimeout(f, 1500))
+    const id = idle(() => SLIDES.slice(2).forEach((s) => getPhotos(s.query, 1).then((items) => {
       if (items[0]) { const img = new Image(); img.src = items[0].url }
-    }))
+    })), { timeout: 5000 })
+    return () => (window.cancelIdleCallback || clearTimeout)(id)
   }, [])
+
+  // Only slides already shown, and the next one, are mounted: the other
+  // full-screen photos are not downloaded and decoded during page load.
+  const [seen, setSeen] = useState(() => new Set([0, 1]))
+  useEffect(() => {
+    setSeen((prev) => (prev.has(i) && prev.has((i + 1) % SLIDES.length) ? prev
+      : new Set([...prev, i, (i + 1) % SLIDES.length])))
+  }, [i])
 
   const slide = SLIDES[i]
   const urgent = alerts.find((a) => a.severity === 'high')
 
   return (
     <section className="on-photo relative -mt-16 min-h-[100svh] overflow-hidden bg-abyss pt-16"
-             onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+             onMouseEnter={() => setPaused(true)} onPointerMove={onMove}
+             onMouseLeave={() => { setPaused(false); mx.set(0); my.set(0) }}>
       {/* Photo slideshow: every slide is mounted; the active one fades in and
           zooms slowly (Ken Burns), the others rest at opacity 0. */}
       <motion.div style={{ y }} className="absolute inset-0" aria-hidden="true">
+        <motion.div style={{ x: photoX, y: photoY, scale: 1.05 }} className="absolute inset-0">
         {SLIDES.map((s, idx) => (
           <motion.div key={s.scene} className="absolute inset-0"
             initial={false} animate={{ opacity: idx === i ? 1 : 0 }} transition={{ duration: 1.8, ease }}>
             <div className="absolute inset-0 bg-gradient-to-br from-ink-800 via-abyss to-abyss" />
-            <PlacePhoto query={s.query} name={s.title} count={1} large eager={idx < 2} credit={idx === i}
+            {seen.has(idx) && <PlacePhoto query={s.query} name={s.title} count={1} large eager={idx < 2} credit={idx === i}
                         className="absolute inset-0 h-full w-full"
-                        imgClassName={idx === i && !reduce ? 'nt-kenburns' : ''} key={idx === i ? `on-${i}` : `off-${idx}`} />
+                        imgClassName={idx === i && !reduce ? 'nt-kenburns' : ''} key={idx === i ? `on-${i}` : `off-${idx}`} />}
           </motion.div>
         ))}
+        </motion.div>
         {/* Dark gradient so the headline always reads */}
         <div className="absolute inset-0 bg-gradient-to-b from-abyss/75 via-abyss/45 to-abyss/95" />
         <div className="absolute inset-0 bg-gradient-to-r from-abyss/70 via-abyss/20 to-transparent rtl:bg-gradient-to-l" />
         <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-ink-950" />
       </motion.div>
 
-      <motion.div style={{ opacity: fade }} className="relative mx-auto flex min-h-[calc(100svh-4rem)] max-w-7xl flex-col justify-center px-5 py-24 sm:px-8">
+      {!reduce && <Mist y={mistY} x={mistX} />}
+
+      <motion.div style={{ opacity: fade, x: copyX, y: copyY }} className="relative mx-auto flex min-h-[calc(100svh-4rem)] max-w-7xl flex-col justify-center px-5 py-24 sm:px-8">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.1, ease }}>
           <span className="chip !border-glacier-400/25 !bg-glacier-400/10 !text-glacier-200">
             <span className="relative flex h-1.5 w-1.5">
@@ -105,7 +200,9 @@ function Hero({ alerts = [] }) {
         <h1 className="font-serif-display mt-6 max-w-4xl text-[2.7rem] font-semibold leading-[1.06] text-frost-50 drop-shadow-[0_4px_30px_rgba(0,0,0,.45)] sm:text-6xl lg:text-[4.7rem]">
           <WordReveal text={t('Book the North with')} delay={0.25} />
           <br />
-          <WordReveal text={t('facts, not Facebook groups.')} delay={0.55} className="text-gradient italic" />
+          <WordReveal text={t('facts, not Facebook groups.')} delay={0.55} className="relative inline-block text-gradient italic">
+            <GoldShimmer text={t('facts, not Facebook groups.')} />
+          </WordReveal>
         </h1>
 
         <motion.p
@@ -260,9 +357,10 @@ function ConditionsStrip({ routes = [], weather = [] }) {
               </div>
               <div className="mt-3 h-1 overflow-hidden rounded-full bg-white/[.06]">
                 <motion.div
-                  initial={{ width: 0 }} whileInView={{ width: `${r.confidence * 100}%` }} viewport={{ once: true }}
+                  style={{ width: `${r.confidence * 100}%` }}
+                  initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true }}
                   transition={{ duration: 1.2, ease }}
-                  className={`h-full rounded-full ${STATUS[r.status]?.dot || 'bg-glacier-400'}`}
+                  className={`h-full origin-left rounded-full rtl:origin-right ${STATUS[r.status]?.dot || 'bg-glacier-400'}`}
                 />
               </div>
               <div className="mt-1.5 text-[10px] uppercase tracking-wider text-frost-400">
@@ -277,7 +375,7 @@ function ConditionsStrip({ routes = [], weather = [] }) {
             <div className="glass mt-4 flex gap-3 overflow-x-auto rounded-2xl p-4 no-scrollbar">
               {weather.map((w) => (
                 <div key={w.city} className="flex min-w-[168px] shrink-0 items-center gap-3 rounded-xl bg-white/[.03] px-4 py-3">
-                  <CloudSun className="h-7 w-7 text-glacier-300" strokeWidth={1.6} />
+                  <WeatherIcon condition={w.condition} />
                   <div>
                     <div className="text-[12px] font-bold text-frost-50">{w.city}</div>
                     <div className="text-[11px] text-frost-400">{w.temp_c}°C · {w.condition}</div>
@@ -293,6 +391,12 @@ function ConditionsStrip({ routes = [], weather = [] }) {
 }
 
 /* ------------------------------------------------ best places this week */
+/** Cards turn down into place from the top edge, one after another. */
+const flipIn = {
+  hidden: { opacity: 0, rotateX: -62, y: 24 },
+  show: { opacity: 1, rotateX: 0, y: 0, transition: { duration: 0.9, ease } },
+}
+
 function BestThisWeek() {
   const t = useT()
   const [state, setState] = useState({ status: 'loading', items: [] })
@@ -310,9 +414,10 @@ function BestThisWeek() {
       {state.status === 'loading' && <div className="grid gap-5 md:grid-cols-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-[360px] rounded-2xl" />)}</div>}
       {state.status === 'error' && <ErrorState title={t('Recommendations are loading')} message={state.error} onRetry={load} />}
       {state.status === 'ok' && (
-        <Stagger className="grid gap-5 md:grid-cols-3">
+        <Stagger className="grid gap-5 md:grid-cols-3" gap={0.16}>
           {state.items.map((r, k) => (
-            <motion.div key={r.destination.id} variants={item} whileHover={{ y: -6 }} transition={{ duration: 0.5, ease }}
+            <motion.div key={r.destination.id} variants={flipIn} whileHover={{ y: -6 }} transition={{ duration: 0.5, ease }}
+              style={{ transformPerspective: 1100, transformOrigin: '50% 0%' }}
               className="glass group overflow-hidden rounded-2xl transition-shadow duration-500 hover:shadow-glow">
               <div className="relative h-40 overflow-hidden">
                 <PlacePhoto query={r.destination.photo_query || r.destination.name} name={r.destination.name} count={1}
@@ -493,11 +598,13 @@ export default function Home() {
   return (
     <>
       <Hero alerts={d.alerts} />
-      <div className="border-y border-white/[.06] bg-ink-900/40">
-        <div className="mx-auto max-w-7xl px-5 sm:px-8"><Marquee items={ticker} /></div>
-      </div>
+      <WhenNear minHeight={50} margin="0px">
+        <div className="border-y border-white/[.06] bg-ink-900/40">
+          <div className="mx-auto max-w-7xl px-5 sm:px-8"><Marquee items={ticker} /></div>
+        </div>
+      </WhenNear>
       {/* Below the fold: each section mounts as the visitor scrolls near it. */}
-      <WhenNear minHeight={720}><Flows /></WhenNear>
+      <WhenNear minHeight={720} margin="0px 0px 60px 0px"><Flows /></WhenNear>
       <WhenNear minHeight={640}><ConditionsStrip routes={d.routes} weather={d.weather} /></WhenNear>
       <WhenNear minHeight={680}><BestThisWeek /></WhenNear>
       <WhenNear minHeight={700}><Featured packages={d.packages} /></WhenNear>

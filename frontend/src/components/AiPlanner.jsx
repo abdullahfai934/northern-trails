@@ -9,6 +9,7 @@ import { useT } from '../lib/i18n'
 import { downloadPlanPdf } from '../lib/pdf'
 import { SafetyGauge } from './charts'
 import { ErrorState, Field, Reveal, Skeleton, ease, fieldClass, useToast } from './ui'
+import { useDir } from './motion'
 
 const INTERESTS = ['Mountains', 'Lakes', 'Trekking', 'Culture', 'Photography', 'Camping', 'Wildlife', 'Heritage', 'Road trip', 'Short break']
 const STARTS = ['Islamabad', 'Gilgit', 'Chilas', 'Skardu']
@@ -40,6 +41,20 @@ export default function AiPlanner() {
     }).catch(() => {})
   }, [params, auth.signedIn])
 
+  // A freshly built plan is "written" onto the page day by day; once that has
+  // played (or the user starts editing) days render still.
+  const [writing, setWriting] = useState(false)
+  const dir = useDir()
+  useEffect(() => {
+    if (!writing || !plan) return undefined
+    const id = setTimeout(() => setWriting(false), plan.days.length * 450 + 1600)
+    return () => clearTimeout(id)
+  }, [writing, plan])
+  useEffect(() => { if (editing) setWriting(false) }, [editing])
+  const write = (i, k = 0) => (writing
+    ? { initial: { opacity: 0, x: 10 * dir }, animate: { opacity: 1, x: 0 }, transition: { duration: 0.5, delay: i * 0.45 + 0.2 + k * 0.12, ease } }
+    : {})
+
   const set = (k, v) => setBrief((b) => ({ ...b, [k]: v }))
   const toggle = (i) => set('interests', brief.interests.includes(i) ? brief.interests.filter((x) => x !== i) : [...brief.interests, i])
 
@@ -55,7 +70,7 @@ export default function AiPlanner() {
       setState({ status: 'loading' }); setEditing(false)
       try {
         const p = await api.aiPlan({ ...brief, days: Number(brief.days), people: Number(brief.people), budget_pkr: Number(brief.budget_pkr) || 0 })
-        setPlan(p); setState({ status: 'ok' })
+        setPlan(p); setState({ status: 'ok' }); setWriting(true)
       } catch (err) { setState({ status: 'error', error: err.message }) }
     }
     auth.requireAuth(run, 'Sign in to build an AI trip plan')
@@ -153,7 +168,8 @@ export default function AiPlanner() {
             <ol className="space-y-3">
               <AnimatePresence initial={false}>
                 {plan.days.map((d, i) => (
-                  <motion.li key={d.day} initial={{ opacity: 0, x: 14 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45, delay: i * 0.05, ease }}
+                  <motion.li key={d.day} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.55, delay: writing ? i * 0.45 : i * 0.05, ease }}
                     className="glass rounded-2xl p-5">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <div className="text-[10px] font-bold uppercase tracking-[.16em] text-glacier-300">{t('Day')} {d.day} · <MapPin className="inline h-3 w-3" /> {d.location}</div>
@@ -167,8 +183,8 @@ export default function AiPlanner() {
                       </div>
                     ) : (
                       <>
-                        <div className="mt-1 text-[15px] font-semibold text-frost-50">{d.title}</div>
-                        <ul className="mt-1.5 space-y-1 text-[13px] text-frost-300">{(d.activities || []).filter(Boolean).map((a, k) => <li key={k}>• {a}</li>)}</ul>
+                        <motion.div {...write(i)} className="mt-1 text-[15px] font-semibold text-frost-50">{d.title}</motion.div>
+                        <ul className="mt-1.5 space-y-1 text-[13px] text-frost-300">{(d.activities || []).filter(Boolean).map((a, k) => <motion.li key={k} {...write(i, k + 1)}>• {a}</motion.li>)}</ul>
                       </>
                     )}
                     {d.restaurant && (

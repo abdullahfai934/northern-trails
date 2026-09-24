@@ -16,6 +16,14 @@
           t = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
         }
         document.documentElement.setAttribute('data-theme', t)
+        /* First visit only: the intro loader (below) draws the logo while the
+           app downloads. Skipped with reduced motion or blocked storage. */
+        try {
+          if (!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) && !localStorage.getItem('nt-intro-seen')) {
+            localStorage.setItem('nt-intro-seen', '1')
+            document.documentElement.classList.add('nt-intro-on')
+          }
+        } catch (e) {}
         var m = document.querySelector('meta[name="theme-color"]')
         if (m) m.setAttribute('content', t === 'light' ? '#f4f6fa' : '#070b14')
       })()
@@ -32,8 +40,42 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <style>
+      /* Intro loader: plain HTML + CSS so it costs the app's main thread
+         nothing. The mountain draws itself as a line (0.8 s), then the
+         overlay fades into the page (by 1.3 s). Never takes pointer events. */
+      #nt-intro { display: none; }
+      .nt-intro-on #nt-intro {
+        position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; pointer-events: none;
+        background: #070b14; animation: nt-intro-out .45s cubic-bezier(.22,1,.36,1) .85s forwards;
+      }
+      [data-theme='light'].nt-intro-on #nt-intro { background: #f5f2ec; }
+      #nt-intro .mark { display: flex; flex-direction: column; align-items: center; gap: 16px;
+        animation: nt-intro-grow .45s cubic-bezier(.22,1,.36,1) .85s forwards; }
+      #nt-intro svg { width: 64px; height: 64px; }
+      #nt-intro path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: nt-intro-draw .8s cubic-bezier(.65,0,.35,1) forwards; }
+      #nt-intro span { font: 600 13px/1 Poppins, Inter, system-ui, sans-serif; letter-spacing: .2em; color: #d2cdc5; opacity: 0;
+        animation: nt-intro-rise .5s cubic-bezier(.22,1,.36,1) .3s forwards; }
+      [data-theme='light'] #nt-intro span { color: #4a4f57; }
+      @keyframes nt-intro-draw { to { stroke-dashoffset: 0; } }
+      @keyframes nt-intro-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+      @keyframes nt-intro-out  { to { opacity: 0; visibility: hidden; } }
+      @keyframes nt-intro-grow { to { opacity: 0; transform: scale(1.06); } }
+    </style>
   </head>
   <body>
+    <div id="nt-intro" aria-hidden="true">
+      <div class="mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <defs><linearGradient id="nt-intro-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6CC4C0" /><stop offset="1" stop-color="#D9B45F" /></linearGradient></defs>
+          <path pathLength="1" d="m8 3 4 8 5-5 5 15H2L8 3z" stroke="url(#nt-intro-grad)" />
+        </svg>
+        <span>NORTHERN TRAILS</span>
+      </div>
+    </div>
+    <script>
+      setTimeout(function () { var el = document.getElementById('nt-intro'); if (el) el.remove() }, 1500)
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

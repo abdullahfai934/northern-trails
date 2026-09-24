@@ -10,6 +10,7 @@ import { api, pkr, wsUrl } from '../lib/api'
 import { closeSocket } from '../lib/socket'
 import { fetchRoute } from '../lib/liveDirect'
 import { Reveal, SectionTitle, Stars, ease, useToast } from '../components/ui'
+import { ArrivalGlow, SuccessCheck, slideIn, useDir } from '../components/motion'
 
 const STAGE_STEPS = [
   ['driver_enroute', 'Driver en route'],
@@ -22,6 +23,7 @@ export default function Instant() {
   const d = useData()
   const toast = useToast()
   const me = useMemo(travelerId, [])
+  const dir = useDir()
 
   const [service, setService] = useState('jeep')
   const [pickup, setPickup] = useState('Gilgit')
@@ -248,7 +250,7 @@ export default function Instant() {
 
             {phase === 'searching' && (
               <motion.div key="searching"
-                initial={{ opacity: 0, x: 28 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -28 }}
+                initial={{ opacity: 0, x: 28 * dir }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -28 * dir }}
                 transition={{ duration: 0.45, ease }} className="space-y-4">
 
                 <div className="glass relative overflow-hidden rounded-2xl p-8 text-center">
@@ -263,8 +265,8 @@ export default function Instant() {
                       <Clock className="h-3.5 w-3.5 text-amberz-300" /> {countdown}s left
                     </div>
                     <div className="mx-auto mt-4 h-1 w-56 overflow-hidden rounded-full bg-white/10">
-                      <motion.div className="h-full bg-gradient-to-r from-glacier-300 to-amberz-400"
-                        initial={{ width: '100%' }} animate={{ width: '0%' }}
+                      <motion.div className="h-full origin-left bg-gradient-to-r from-glacier-300 to-amberz-400 rtl:origin-right"
+                        initial={{ scaleX: 1 }} animate={{ scaleX: 0 }}
                         transition={{ duration: request?.expires_in || 45, ease: 'linear' }} />
                     </div>
                     <div className="mt-4 text-[12px] text-frost-400">
@@ -276,12 +278,9 @@ export default function Instant() {
 
                 <AnimatePresence>
                   {offers.map((o, i) => (
-                    <motion.div key={o.id}
-                      initial={{ opacity: 0, x: 40, scale: 0.97 }}
-                      animate={{ opacity: 1, x: 0, scale: 1 }}
-                      exit={{ opacity: 0, x: -40 }}
-                      transition={{ type: 'spring', stiffness: 300, damping: 26, delay: i * 0.04 }}
-                      className="glass rounded-2xl p-5">
+                    <motion.div key={o.id} {...slideIn(dir, i)}
+                      className="glass relative overflow-hidden rounded-2xl p-5">
+                      <ArrivalGlow />
                       <div className="flex items-start gap-3">
                         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-sm font-black text-abyss"
                               style={{ background: `hsl(${o.operator.avatar_hue} 70% 62%)` }}>
@@ -323,13 +322,9 @@ export default function Instant() {
 
             {phase === 'confirmed' && trip && (
               <motion.div key="confirmed"
-                initial={{ opacity: 0, x: 28 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -28 }}
+                initial={{ opacity: 0, x: 28 * dir }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -28 * dir }}
                 transition={{ duration: 0.45, ease }} className="glass rounded-2xl p-6">
-                <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                            transition={{ type: 'spring', stiffness: 250, damping: 16 }}
-                            className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-emerald-400/15 text-emerald-300">
-                  <Check className="h-8 w-8" strokeWidth={3} />
-                </motion.div>
+                <SuccessCheck />
                 <div className="mt-4 text-center">
                   <div className="text-xl font-extrabold text-frost-50">Trip confirmed</div>
                   <div className="mt-1 text-[13px] text-frost-300">
@@ -341,7 +336,15 @@ export default function Instant() {
                 {/* live tracking timeline */}
                 <div className="mt-8">
                   <div className="mb-4 text-[11px] font-bold uppercase tracking-[.18em] text-frost-400">Live trip tracking</div>
-                  <div className="space-y-0">
+                  <div className="relative space-y-0">
+                    {/* The jeep glides down the line to each new stage (64 px per step). */}
+                    <motion.span aria-hidden="true"
+                      className="absolute end-0 top-0 grid h-7 w-7 place-items-center rounded-lg bg-glacier-400/15 text-glacier-200 ring-1 ring-glacier-400/30"
+                      initial={false}
+                      animate={{ y: Math.max(0, STAGE_STEPS.findIndex(([k]) => k === stage)) * 64 - 2, opacity: stage ? 1 : 0.45 }}
+                      transition={{ duration: 0.9, ease }}>
+                      <CarFront className="h-3.5 w-3.5" />
+                    </motion.span>
                     {STAGE_STEPS.map(([key, label], i) => {
                       const idx = STAGE_STEPS.findIndex(([k]) => k === stage)
                       const done = idx >= i && idx !== -1
@@ -350,17 +353,18 @@ export default function Instant() {
                         <div key={key} className="flex gap-4">
                           <div className="flex flex-col items-center">
                             <motion.span
-                              animate={{ scale: active ? [1, 1.35, 1] : 1 }}
-                              transition={{ repeat: active ? Infinity : 0, duration: 1.8 }}
+                              animate={{ scale: active ? [1, 1.25, 1] : 1 }}
+                              transition={{ repeat: active ? Infinity : 0, duration: 1.8, ease: 'easeInOut' }}
                               className={`grid h-6 w-6 place-items-center rounded-full text-[10px] font-bold transition-colors duration-500
                                 ${done ? 'bg-glacier-400 text-abyss' : 'bg-white/10 text-frost-400'}`}>
                               {done ? <Check className="h-3 w-3" strokeWidth={3.5} /> : i + 1}
                             </motion.span>
                             {i < STAGE_STEPS.length - 1 && (
                               <span className="relative my-1 h-8 w-px bg-white/10">
-                                <motion.span className="absolute inset-x-0 top-0 bg-glacier-400"
-                                  initial={{ height: 0 }} animate={{ height: done ? '100%' : 0 }}
-                                  transition={{ duration: 0.6, ease }} />
+                                {/* fills (scaleY) as the jeep travels to the next stage */}
+                                <motion.span className="absolute inset-0 origin-top bg-glacier-400"
+                                  initial={{ scaleY: 0 }} animate={{ scaleY: idx > i ? 1 : 0 }}
+                                  transition={{ duration: 0.9, ease }} />
                               </span>
                             )}
                           </div>
@@ -399,9 +403,9 @@ export default function Instant() {
                   </p>
                 )}
                 {feed.map((f) => (
-                  <motion.div key={f.id}
-                    initial={{ opacity: 0, x: 24, height: 0 }}
-                    animate={{ opacity: 1, x: 0, height: 'auto' }}
+                  <motion.div key={f.id} layout
+                    initial={{ opacity: 0, x: 24 * dir }}
+                    animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.35, ease }}
                     className="flex items-start gap-2 text-[12px] leading-relaxed">

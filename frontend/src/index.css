@@ -193,3 +193,81 @@ body::after {
    never visibly stops before the crossfade). */
 @keyframes nt-kenburns { from { transform: scale(1.02) translate3d(0,0,0); } to { transform: scale(1.12) translate3d(-1.2%, -1%, 0); } }
 .nt-kenburns { animation: nt-kenburns 9s ease-out forwards; }
+
+/* ------------------------------------------------------------------------
+   Motion. Everything below animates transform and opacity only, so it runs
+   on the compositor; the reduced-motion rule above stops all of it.
+   ------------------------------------------------------------------------ */
+
+/* Ghost buttons get the same soft sweep of light as primary ones, fainter. */
+.btn-ghost { overflow: hidden; }
+.btn-ghost::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(105deg, transparent 30%, rgb(var(--overlay) / .10) 50%, transparent 70%);
+  transform: translateX(-120%); transition: transform .8s cubic-bezier(.22,1,.36,1);
+}
+.btn-ghost:hover::after { transform: translateX(120%); }
+[dir='rtl'] .btn-primary::after, [dir='rtl'] .btn-ghost::after { transform: translateX(120%); }
+[dir='rtl'] .btn-primary:hover::after, [dir='rtl'] .btn-ghost:hover::after { transform: translateX(-120%); }
+
+/* Hero mist: two soft banks of cloud drifting slowly across the photo. */
+@keyframes nt-mist { from { transform: translate3d(-18%, 0, 0); } to { transform: translate3d(8%, 0, 0); } }
+/* Sized from the viewport, not the section, so the hero growing (an alert
+   arriving) never moves it and never counts as a layout shift. */
+.nt-mist { position: absolute; top: 34vh; height: 56vh; left: -30vw; right: -30vw; pointer-events: none; will-change: transform;
+           animation: nt-mist 48s ease-in-out infinite alternate; }
+.nt-mist-b { animation-duration: 70s; animation-direction: alternate-reverse; }
+[dir='rtl'] .nt-mist { animation-direction: alternate-reverse; }
+.nt-mist-paused .nt-mist { animation-play-state: paused; }
+@keyframes nt-fade-in { from { opacity: 0; } to { opacity: 1; } }
+.nt-mist-in { animation: nt-fade-in 2.2s ease-out both; }
+[dir='rtl'] .nt-mist-b { animation-direction: alternate; }
+
+/* Earthquake ripples on the map */
+@keyframes nt-ripple { from { transform: scale(.35); opacity: .75; } to { transform: scale(2.6); opacity: 0; } }
+.nt-quake { position: relative; pointer-events: none; }
+.nt-quake span { position: absolute; inset: 0; border-radius: 9999px; border: 1.5px solid #d03b3b;
+                 animation: nt-ripple 2.8s cubic-bezier(.22,1,.36,1) infinite; }
+.nt-quake span:nth-child(2) { animation-delay: .93s; }
+.nt-quake span:nth-child(3) { animation-delay: 1.86s; }
+
+/* Map layers fade in and out as a whole pane */
+.nt-pane { transition: opacity .45s cubic-bezier(.22,1,.36,1); will-change: opacity; }
+
+/* Live weather icons */
+@keyframes nt-wx-glow { 0%,100% { transform: scale(.85); opacity: .45; } 50% { transform: scale(1.1); opacity: .9; } }
+@keyframes nt-wx-spin { to { transform: rotate(360deg); } }
+@keyframes nt-wx-drift { 0%,100% { transform: translateX(-2px); } 50% { transform: translateX(2px); } }
+@keyframes nt-wx-drop { 0% { transform: translateY(0); opacity: 0; } 20% { opacity: .9; } 100% { transform: translateY(9px); opacity: 0; } }
+@keyframes nt-wx-flake { 0% { transform: translate(0, 0); opacity: 0; } 25% { opacity: .95; } 60% { transform: translate(1.5px, 7px); } 100% { transform: translate(-1px, 12px); opacity: 0; } }
+.nt-wx-glow { background: radial-gradient(closest-side, rgb(var(--amberz-400) / .35), transparent); animation: nt-wx-glow 3.6s ease-in-out infinite; }
+.nt-wx-spin { animation: nt-wx-spin 28s linear infinite; }
+.nt-wx-drift { animation: nt-wx-drift 5s ease-in-out infinite; }
+.nt-wx-drift-back { animation: nt-wx-drift 7s ease-in-out infinite reverse; }
+.nt-wx-drop { animation: nt-wx-drop 1s linear infinite; }
+.nt-wx-flake { animation: nt-wx-flake 2.4s ease-in infinite; }
+
+/* A road that changed recently breathes a soft ring three times */
+@keyframes nt-row-pulse { 0%,100% { opacity: 0; } 50% { opacity: 1; } }
+.nt-row-pulse { animation: nt-row-pulse 2.4s ease-in-out 3; }
+
+/* The gold copy the headline shimmer sweeps across */
+.nt-gold-text {
+  /* the hero is dark in both themes, so the highlight is fixed light gold */
+  background: linear-gradient(90deg, rgb(227 196 126), rgb(240 226 196) 50%, rgb(227 196 126));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+/* Headline shimmer: a band-shaped window slides across while the gold copy
+   inside slides back by the same amount, so only the light moves. Once. */
+@keyframes nt-shimmer-in  { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+@keyframes nt-shimmer-out { from { transform: translateX(100%); } to { transform: translateX(-100%); } }
+.nt-shimmer-window {
+  -webkit-mask-image: linear-gradient(100deg, transparent 38%, #000 50%, transparent 62%);
+          mask-image: linear-gradient(100deg, transparent 38%, #000 50%, transparent 62%);
+  transform: translateX(-100%);
+  animation: nt-shimmer-in 1.5s cubic-bezier(.45,0,.25,1) 1.9s both;
+}
+.nt-shimmer-copy { animation: nt-shimmer-out 1.5s cubic-bezier(.45,0,.25,1) 1.9s both; }
+[dir='rtl'] .nt-shimmer-window { animation-name: nt-shimmer-out; }
+[dir='rtl'] .nt-shimmer-copy { animation-name: nt-shimmer-in; }

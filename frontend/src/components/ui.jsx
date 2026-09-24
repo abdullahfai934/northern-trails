@@ -13,8 +13,8 @@ export function Reveal({ children, delay = 0, y = 26, className = '', once = tru
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y, filter: 'blur(6px)' }}
-      animate={inView ? { opacity: 1, y: 0, filter: 'blur(0px)' } : {}}
+      initial={{ opacity: 0, y }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.75, delay, ease }}
       className={className}
     >
@@ -69,21 +69,31 @@ export function SectionTitle({ eyebrow, title, sub, right }) {
   const { t } = useTranslation()
   const tr = (x) => (typeof x === 'string' ? t(x) : x)
   eyebrow = tr(eyebrow); title = tr(title); sub = tr(sub)
+  // Every section heading reveals on scroll: the eyebrow rule draws out, then
+  // eyebrow, title, subtitle and the action rise in, one after another.
+  const ref = useRef(null)
+  const inView = useInView(ref, { once: true, margin: '-8% 0px' })
+  const rise = (i) => ({
+    initial: { opacity: 0, y: 18 },
+    animate: inView ? { opacity: 1, y: 0 } : {},
+    transition: { duration: 0.7, delay: i * 0.09, ease },
+  })
   return (
-    <div className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+    <div ref={ref} className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
       <div>
         {eyebrow && (
-          <div className="mb-3 flex items-center gap-2.5">
-            <span className="h-px w-8 bg-gradient-to-r from-glacier-400 to-transparent" />
+          <motion.div {...rise(0)} className="mb-3 flex items-center gap-2.5">
+            <motion.span className="h-px w-8 origin-left bg-gradient-to-r from-glacier-400 to-transparent rtl:origin-right rtl:bg-gradient-to-l"
+              initial={{ scaleX: 0 }} animate={inView ? { scaleX: 1 } : {}} transition={{ duration: 0.8, delay: 0.1, ease }} />
             <span className="text-[11px] font-bold uppercase tracking-[.22em] text-glacier-300">{eyebrow}</span>
-          </div>
+          </motion.div>
         )}
-        <h2 className="max-w-2xl text-3xl font-extrabold leading-[1.1] tracking-tight text-frost-50 sm:text-[2.6rem]">
+        <motion.h2 {...rise(1)} className="max-w-2xl text-3xl font-extrabold leading-[1.1] tracking-tight text-frost-50 sm:text-[2.6rem]">
           {title}
-        </h2>
-        {sub && <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-frost-300">{sub}</p>}
+        </motion.h2>
+        {sub && <motion.p {...rise(2)} className="mt-3 max-w-xl text-[15px] leading-relaxed text-frost-300">{sub}</motion.p>}
       </div>
-      {right}
+      {right && <motion.div {...rise(3)} className="flex flex-col">{right}</motion.div>}
     </div>
   )
 }

@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Send, Sparkles, ShieldCheck, Database, RotateCcw, AlertCircle } from 'lucide-react'
 
 import { useData } from '../lib/store'
 import { api } from '../lib/api'
 import { Reveal, ease } from '../components/ui'
+import { useStreamedText } from '../components/motion'
 
 const KIND_TONE = {
   road: 'text-glacier-300 bg-glacier-400/10 ring-glacier-400/25',
@@ -49,7 +50,7 @@ export default function Assistant() {
   // Chat history survives reloads and navigation; errors are not kept.
   useEffect(() => {
     try {
-      const keep = messages.filter((m) => !m.error).slice(-MAX_KEPT)
+      const keep = messages.filter((m) => !m.error).slice(-MAX_KEPT).map(({ fresh, ...m }) => m)
       localStorage.setItem(STORE, JSON.stringify(keep))
     } catch { /* storage full or blocked: history just is not kept */ }
   }, [messages])
@@ -62,7 +63,7 @@ export default function Assistant() {
     setBusy(true)
     try {
       const r = await api.chat(q, history)
-      setMessages((m) => [...m, { id: newId(), role: 'assistant', content: r.answer, citations: r.citations, engine: r.engine }])
+      setMessages((m) => [...m, { id: newId(), role: 'assistant', content: r.answer, citations: r.citations, engine: r.engine, fresh: true }])
     } catch (e) {
       setMessages((m) => [...m, { id: newId(), role: 'assistant', error: true, retry: q, content: e.message }])
     } finally {
@@ -159,23 +160,10 @@ export default function Assistant() {
                           ? 'rounded-2xl rounded-br-sm bg-glacier-400/15 px-4 py-2.5 text-[13.5px] leading-relaxed text-frost-50 ring-1 ring-glacier-400/20'
                           : 'rounded-2xl rounded-bl-sm bg-white/[.04] px-4 py-3.5 text-[13.5px] leading-relaxed text-frost-200'
                       }>
-                        <Markdownish text={m.content} />
+                        {m.role === 'assistant'
+                          ? <StreamedAnswer m={m} onGrow={() => endRef.current?.scrollIntoView({ block: 'end' })} />
+                          : <Markdownish text={m.content} />}
 
-                        {m.citations?.length > 0 && (
-                          <div className="mt-4 border-t border-white/[.07] pt-3">
-                            <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[.14em] text-frost-400">
-                              <Database className="h-3 w-3" /> grounded in {m.citations.length} live record{m.citations.length > 1 ? 's' : ''}
-                            </div>
-                            <div className="flex flex-wrap gap-1.5">
-                              {m.citations.map((c) => (
-                                <span key={c.id} title={`${c.label || c.id} — ${c.source}${c.updated_at ? ' · ' + c.updated_at : ''}`}
-                                  className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-mono text-[10px] ring-1 ${KIND_TONE[c.kind] || KIND_TONE.road}`}>
-                                  <ShieldCheck className="h-3 w-3" />{c.kind === 'restaurant' ? c.label : c.id}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
                       </div>
                     )}
                   </div>
@@ -247,6 +235,49 @@ export default function Assistant() {
 }
 
 /** Minimal markdown: **bold**, *italic*, bullet lists and paragraph breaks. */
+/**
+ * A new answer streams in word by word, then its citations fade in. Screen
+ * readers get the whole answer at once (the moving copy is hidden from them);
+ * old messages and reduced motion show it complete.
+ */
+function StreamedAnswer({ m, onGrow }) {
+  const reduce = useReducedMotion()
+  const streaming = Boolean(m.fresh) && !reduce
+  const { text, done } = useStreamedText(m.content, streaming)
+  useEffect(() => { if (streaming) onGrow?.() }, [text]) // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <>
+      {streaming && !done && <span className="sr-only">{m.content}</span>}
+      <div aria-hidden={streaming && !done ? 'true' : undefined}>
+        <Markdownish text={text} />
+      </div>
+      {done && m.citations?.length > 0 && (
+        <motion.div initial={streaming ? { opacity: 0, y: 6 } : false} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease }}>
+          <Citations items={m.citations} />
+        </motion.div>
+      )}
+    </>
+  )
+}
+
+function Citations({ items }) {
+  return (
+    <div className="mt-4 border-t border-white/[.07] pt-3">
+      <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[.14em] text-frost-400">
+        <Database className="h-3 w-3" /> grounded in {items.length} live record{items.length > 1 ? 's' : ''}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {items.map((c) => (
+          <span key={c.id} title={`${c.label || c.id} — ${c.source}${c.updated_at ? ' · ' + c.updated_at : ''}`}
+            className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-mono text-[10px] ring-1 ${KIND_TONE[c.kind] || KIND_TONE.road}`}>
+            <ShieldCheck className="h-3 w-3" />{c.kind === 'restaurant' ? c.label : c.id}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function inline(text, key) {
   return text.split(/(\*\*[^*]+\*\*|\*[^*\s][^*]*\*)/g).map((chunk, j) => {
     if (chunk.startsWith('**') && chunk.endsWith('**')) {

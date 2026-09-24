@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { motion, useScroll, useTransform } from 'framer-motion'
+import { motion, useScroll, useSpring, useTransform } from 'framer-motion'
 import {
   ArrowLeft, BadgeCheck, CalendarDays, Check, Users, X as XIcon,
   ShieldCheck, FileCheck2, AlertTriangle, Languages, Car, Heart, Share2,
@@ -16,6 +16,23 @@ import { Gallery, sharePackage, usePackageActions } from '../components/PackageA
 import { ErrorState, Reveal, Skeleton, StatusPill, Stars, ease, useToast } from '../components/ui'
 import { SafetyGauge } from '../components/charts'
 import { useT } from '../lib/i18n'
+
+/**
+ * The day-by-day list. Its line draws downwards as you scroll through it (a
+ * scaleY on a 1 px rule, tied to scroll position), over the faint full rule.
+ */
+function Itinerary({ children }) {
+  const ref = useRef(null)
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start 85%', 'end 55%'] })
+  const grow = useSpring(scrollYProgress, { stiffness: 90, damping: 24, restDelta: 0.001 })
+  return (
+    <ol ref={ref} className="relative space-y-5 ps-6">
+      <span aria-hidden="true" className="absolute inset-y-0 start-0 w-px bg-white/10" />
+      <motion.span aria-hidden="true" className="absolute inset-y-0 start-0 w-px origin-top bg-glacier-400/70" style={{ scaleY: grow }} />
+      {children}
+    </ol>
+  )
+}
 
 export default function PackageDetail() {
   const { id } = useParams()
@@ -165,19 +182,21 @@ export default function PackageDetail() {
           {/* itinerary */}
           <Reveal>
             <h2 className="mb-5 text-[11px] font-bold uppercase tracking-[.18em] text-frost-400">Day by day</h2>
-            <ol className="relative space-y-5 border-l border-white/10 pl-6">
+            <Itinerary>
               {pkg.itinerary.map(([day, title, body], i) => (
                 <motion.li key={i}
-                  initial={{ opacity: 0, x: 18 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true, margin: '-40px' }}
-                  transition={{ duration: 0.55, delay: i * 0.06, ease }}
+                  initial={{ opacity: 0, y: 14, scale: 0.97 }} whileInView={{ opacity: 1, y: 0, scale: 1 }} viewport={{ once: true, margin: '-60px' }}
+                  transition={{ duration: 0.6, ease }}
                   className="relative">
-                  <span className="absolute -left-[31px] top-1 grid h-3 w-3 place-items-center rounded-full bg-glacier-400 ring-4 ring-glacier-400/15" />
+                  <motion.span className="absolute -start-[31px] top-1 grid h-3 w-3 place-items-center rounded-full bg-glacier-400 ring-4 ring-glacier-400/15"
+                    initial={{ scale: 0 }} whileInView={{ scale: 1 }} viewport={{ once: true, margin: '-60px' }}
+                    transition={{ duration: 0.5, delay: 0.15, ease }} />
                   <div className="text-[10px] font-bold uppercase tracking-[.16em] text-glacier-300">{day}</div>
                   <div className="mt-0.5 text-[15px] font-bold text-frost-50">{title}</div>
                   <p className="mt-1 text-[13px] leading-relaxed text-frost-300">{body}</p>
                 </motion.li>
               ))}
-            </ol>
+            </Itinerary>
           </Reveal>
 
           {/* inclusions */}
