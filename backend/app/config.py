@@ -81,6 +81,9 @@ LOOKUPS_ENABLED = _flag("LOOKUPS_ENABLED", "1").lower() in ("1", "true", "yes")
 #: Shared secret for the package admin screen. Unset = admin is switched off
 #: and every /api/admin route answers 503, so a fresh deploy is never open.
 ADMIN_TOKEN = _flag("ADMIN_TOKEN")
+# Lets a scheduler (the keep-awake GitHub workflow) run the data refresh and
+# the smart-alert check on demand. Empty switches that endpoint off.
+CRON_TOKEN = _flag("CRON_TOKEN")
 
 # --------------------------------------------------------------------- auth
 FIREBASE_PROJECT_ID = _flag("FIREBASE_PROJECT_ID")

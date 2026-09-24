@@ -300,3 +300,22 @@ def test_admin_stats(client, as_user):
     assert {d["destination"] for d in st["popular_destinations"]} == {"Hunza", "Deosai"}
     as_user("tourist")
     assert client.get("/api/admin/stats").status_code == 403
+
+
+# --------------------------------------------------------- scheduled checks
+def test_cron_run_needs_the_token(client, monkeypatch):
+    from app import config
+    from app.sources.poller import poller
+
+    monkeypatch.setattr(config, "CRON_TOKEN", "")
+    assert client.post("/api/cron/run").status_code == 503
+
+    async def fake_refresh():
+        return {"refreshed": True}
+    monkeypatch.setattr(config, "CRON_TOKEN", "s3cret-cron")
+    monkeypatch.setattr(poller, "refresh_all", fake_refresh)
+    assert client.post("/api/cron/run").status_code == 401
+    assert client.post("/api/cron/run", headers={"X-Cron-Token": "nope"}).status_code == 401
+    r = client.post("/api/cron/run", headers={"X-Cron-Token": "s3cret-cron"})
+    assert r.status_code == 200
+    assert r.json() == {"ok": True, "refreshed": {"refreshed": True}, "alerts": {"new_alerts": 0}}

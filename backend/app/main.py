@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import hmac
 import logging
 import os
 import pathlib
@@ -10,15 +11,15 @@ import uuid
 from datetime import date, timedelta
 from typing import List, Optional
 
-from fastapi import (Depends, FastAPI, HTTPException, Query, Request,
+from fastapi import (Depends, FastAPI, Header, HTTPException, Query, Request,
                      WebSocket, WebSocketDisconnect)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
-from . import (accounts, admin, alerts, assistant, auth, dashboard, data, devapi, photos,
-               places, planner, push, safety, tripai)
+from . import (accounts, admin, alerts, assistant, auth, config, dashboard, data, devapi,
+               photos, places, planner, push, safety, tripai)
 from . import payments as pay
 from .config import PAYMENTS_RETURN_URL, feature_report
 from .geo import ROUTE_ENDPOINTS
@@ -467,6 +468,22 @@ def condition_sources():
 async def refresh_conditions():
     """Force a poll cycle now instead of waiting for the interval."""
     return await poller.refresh_all()
+
+
+@app.post("/api/cron/run", include_in_schema=False)
+async def cron_run(x_cron_token: str = Header("")):
+    """Refresh live data and run the smart-alert check now.
+
+    Called by the scheduled keep-awake workflow, so the checks still happen
+    when a free host has put the server to sleep between visits.
+    """
+    if not config.CRON_TOKEN:
+        raise HTTPException(503, "Scheduled checks are switched off: set CRON_TOKEN on the server.")
+    if not hmac.compare_digest(x_cron_token.encode(), config.CRON_TOKEN.encode()):
+        raise HTTPException(401, "Wrong cron token.")
+    refreshed = await poller.refresh_all()
+    sent = await alerts.check_once()
+    return {"ok": True, "refreshed": refreshed, "alerts": sent}
 
 
 @app.get("/api/conditions/{key}", dependencies=[Depends(devapi.rate_limited)])
