@@ -59,7 +59,7 @@ async def package_editor(x_admin_token: str = Header("", alias="X-Admin-Token"),
     if user.role not in ("admin", "operator"):
         raise HTTPException(403, "Only operators and admins can manage packages.")
     if user.role == "operator" and not user.operator_id:
-        raise HTTPException(403, "Your operator account is not linked to an operator yet — ask an admin.")
+        raise HTTPException(403, "Your operator account is not linked to an operator yet. Ask an admin.")
     return user
 
 

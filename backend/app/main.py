@@ -400,7 +400,7 @@ async def create_booking(body: BookingIn, user: auth.Identity = Depends(auth.req
         raise HTTPException(404, "Package not found")
     ridx = data.route_index()
     warnings = [
-        f"{ridx[r]['name']} is currently {ridx[r]['status']} — {ridx[r]['status_note']}"
+        f"{ridx[r]['name']} is currently {ridx[r]['status']}. {ridx[r]['status_note']}"
         for r in pkg["routes"] if r in ridx and ridx[r]["status"] in ("closed", "restricted", "caution")
     ]
     travelers = max(1, body.travelers)
@@ -684,7 +684,7 @@ async def start_payment(body: PaymentStartIn):
     """Create a transaction and hand back a form for the browser to POST."""
     booking = await repo.get_booking(body.booking_id)
     if not booking:
-        raise HTTPException(404, "Booking not found — create the booking first")
+        raise HTTPException(404, "Booking not found. Create the booking first.")
     if booking.status == "confirmed":
         raise HTTPException(409, "This booking is already paid")
     amount = booking.total_pkr
