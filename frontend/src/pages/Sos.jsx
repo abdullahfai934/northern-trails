@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 import { Ambulance, Hospital, Loader2, LocateFixed, MapPin, MessageCircle, Navigation, Phone, Shield, Siren } from 'lucide-react'
 
 import { api } from '../lib/api'

@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useEffect } from 'react'
 import { Route, Routes, useLocation } from 'react-router-dom'
-import { AnimatePresence, MotionConfig, motion } from 'framer-motion'
+import { AnimatePresence, MotionConfig, motion } from 'motion/react'
 
 import { BottomTabs, Footer, ScrollProgress, TopNav } from './components/Layout'
 import { DataProvider } from './lib/store'

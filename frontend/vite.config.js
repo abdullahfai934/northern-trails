@@ -9,9 +9,12 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+    // The dev server forwards API calls, so the browser sees one origin and
+    // CORS never applies. Point it at the hosted API with
+    //   API_PROXY=https://northern-trails-api.onrender.com npm run dev
     proxy: {
-      '/api': { target: 'http://127.0.0.1:8000', changeOrigin: true },
-      '/ws': { target: 'ws://127.0.0.1:8000', ws: true },
+      '/api': { target: process.env.API_PROXY || 'http://127.0.0.1:8000', changeOrigin: true },
+      '/ws': { target: (process.env.API_PROXY || 'http://127.0.0.1:8000').replace(/^http/, 'ws'), ws: true, changeOrigin: true },
     },
   },
   build: { outDir: 'dist', chunkSizeWarningLimit: 1200 },

@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useCallback, useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 import { Clock, ExternalLink, Navigation, Phone, UtensilsCrossed } from 'lucide-react'
 
 import { getRestaurants } from '../lib/places'

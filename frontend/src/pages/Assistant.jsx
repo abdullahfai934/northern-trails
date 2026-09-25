@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { Send, Sparkles, ShieldCheck, Database, RotateCcw, AlertCircle } from 'lucide-react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { Send, MessagesSquare, ShieldCheck, Database, RotateCcw, AlertCircle } from 'lucide-react'
 
 import { useData } from '../lib/store'
 import { api } from '../lib/api'
@@ -133,7 +133,7 @@ export default function Assistant() {
                     {m.role === 'assistant' && (
                       <div className="mb-1.5 flex items-center gap-2">
                         <span className="grid h-5 w-5 place-items-center rounded-md bg-gradient-to-br from-glacier-400 to-amberz-400 text-abyss">
-                          <Sparkles className="h-3 w-3" />
+                          <MessagesSquare className="h-3 w-3" />
                         </span>
                         <span className="text-[11px] font-bold text-frost-300">Northern Trails</span>
                         {m.engine && (
@@ -176,7 +176,7 @@ export default function Assistant() {
                 <motion.div key="typing" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                   className="flex items-center gap-3" aria-label="Assistant is typing">
                   <span className="grid h-5 w-5 place-items-center rounded-md bg-gradient-to-br from-glacier-400 to-amberz-400 text-abyss">
-                    <Sparkles className="h-3 w-3" />
+                    <MessagesSquare className="h-3 w-3" />
                   </span>
                   <span className="flex items-center gap-1 rounded-2xl rounded-bl-sm bg-white/[.05] px-4 py-3">
                     {[0, 1, 2].map((i) => (

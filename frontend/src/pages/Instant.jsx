@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'motion/react'
 import {
   Zap, MapPin, Users, ArrowRight, Check, X, Clock, BadgeCheck,
   Navigation, Radar, CarFront, RotateCcw,

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'motion/react'
 import { Check, Copy, KeyRound, Loader2, Play, Plus, Trash2 } from 'lucide-react'
 
 import { api, apiBase, apiDocsUrl } from '../lib/api'

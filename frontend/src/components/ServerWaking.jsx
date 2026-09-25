@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'motion/react'
 import { Loader2, WifiOff } from 'lucide-react'
 import { onServerState } from '../lib/api'
 import { useT } from '../lib/i18n'

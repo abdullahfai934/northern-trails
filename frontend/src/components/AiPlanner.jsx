@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { AnimatePresence, motion } from 'framer-motion'
-import { Download, Loader2, MapPin, Pencil, Save, Sparkles, Utensils, Wallet } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
+import { Download, Loader2, MapPin, Pencil, Route, Save, Utensils, Wallet } from 'lucide-react'
 
 import { api, pkr } from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -120,7 +120,7 @@ export default function AiPlanner() {
             </div>
           </div>
           <button type="submit" disabled={state.status === 'loading'} className="btn-primary w-full">
-            {state.status === 'loading' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            {state.status === 'loading' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Route className="h-4 w-4" />}
             {state.status === 'loading' ? t('Planning your trip…') : t('Build my itinerary')}
           </button>
           <p className="text-[11px] leading-relaxed text-frost-400">
@@ -132,7 +132,7 @@ export default function AiPlanner() {
       <div className="min-w-0">
         {state.status === 'idle' && (
           <div className="glass rounded-2xl p-10 text-center">
-            <Sparkles className="mx-auto h-7 w-7 text-glacier-300" />
+            <Route className="mx-auto h-7 w-7 text-glacier-300" />
             <div className="mt-4 text-[15px] font-semibold text-frost-50">{t('Tell us the trip, get a day-by-day plan.')}</div>
             <p className="mx-auto mt-2 max-w-md text-[13px] text-frost-400">{t('Picks the destinations that fit, uses real packages where they match, suggests places to eat, and adds up the cost.')}</p>
           </div>

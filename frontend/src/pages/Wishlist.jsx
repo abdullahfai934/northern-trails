@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 import { Compass, Heart, Trash2 } from 'lucide-react'
 
 import { useData } from '../lib/store'

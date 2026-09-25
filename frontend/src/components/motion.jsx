@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { motion, useMotionValue, useReducedMotion, useSpring } from 'framer-motion'
+import { motion, useMotionValue, useReducedMotion, useSpring } from 'motion/react'
 import { Cloud, CloudRain, CloudSun, Sun } from 'lucide-react'
 import { useLanguage } from '../lib/i18n'
 import { ease } from './ui'

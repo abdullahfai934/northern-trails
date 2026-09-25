@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'motion/react'
 import {
   Bell, BellRing, CalendarCheck, Download, FileText, Heart, ImagePlus, Loader2, MailCheck, MessageSquare,
   Save, Star, Trash2, User, X,

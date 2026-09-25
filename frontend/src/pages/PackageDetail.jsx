@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { motion, useScroll, useSpring, useTransform } from 'framer-motion'
+import { motion, useScroll, useSpring, useTransform } from 'motion/react'
 import {
   ArrowLeft, BadgeCheck, CalendarDays, Check, Users, X as XIcon,
   ShieldCheck, FileCheck2, AlertTriangle, Languages, Car, Heart, Share2,

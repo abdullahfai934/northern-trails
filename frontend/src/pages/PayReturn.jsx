@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 import { SuccessCheck } from '../components/motion'
 import { AlertTriangle, Loader2, XCircle } from 'lucide-react'
 

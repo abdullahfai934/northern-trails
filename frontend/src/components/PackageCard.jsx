@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 import { CalendarDays, ExternalLink, Heart, MapPin, MessageCircle, Share2, ShieldCheck, Users } from 'lucide-react'
 
 import { pkr, whatsappUrl } from '../lib/api'

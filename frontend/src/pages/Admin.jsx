@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'motion/react'
 import {
   BarChart3, Building2, CalendarCheck, Check, Loader2, MessageSquare, Package as PackageIcon, Pencil,
   Plus, Route as RouteIcon, Star, Trash2, Users, X,

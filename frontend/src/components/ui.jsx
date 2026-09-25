@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion, useInView, useMotionValue, useSpring, useTransform } from 'framer-motion'
+import { AnimatePresence, motion, useInView, useMotionValue, useSpring, useTransform } from 'motion/react'
 import { AlertCircle, RotateCcw, X } from 'lucide-react'
 import { STATUS } from '../lib/api'
 import { useTranslation } from 'react-i18next'
@@ -79,19 +79,19 @@ export function SectionTitle({ eyebrow, title, sub, right }) {
     transition: { duration: 0.7, delay: i * 0.09, ease },
   })
   return (
-    <div ref={ref} className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+    <div ref={ref} className="mb-10 flex flex-col gap-6 sm:mb-12 sm:flex-row sm:items-end sm:justify-between">
       <div>
         {eyebrow && (
-          <motion.div {...rise(0)} className="mb-3 flex items-center gap-2.5">
-            <motion.span className="h-px w-8 origin-left bg-gradient-to-r from-glacier-400 to-transparent rtl:origin-right rtl:bg-gradient-to-l"
+          <motion.div {...rise(0)} className="mb-4 flex items-center gap-3">
+            <motion.span className="h-px w-8 origin-left bg-glacier-400/70 rtl:origin-right"
               initial={{ scaleX: 0 }} animate={inView ? { scaleX: 1 } : {}} transition={{ duration: 0.8, delay: 0.1, ease }} />
-            <span className="text-[11px] font-bold uppercase tracking-[.22em] text-glacier-300">{eyebrow}</span>
+            <span className="text-[12px] font-semibold uppercase tracking-[.2em] text-glacier-300">{eyebrow}</span>
           </motion.div>
         )}
-        <motion.h2 {...rise(1)} className="max-w-2xl text-3xl font-extrabold leading-[1.1] tracking-tight text-frost-50 sm:text-[2.6rem]">
+        <motion.h2 {...rise(1)} className="font-serif-display max-w-3xl text-[2rem] font-semibold leading-[1.08] text-frost-50 sm:text-[2.75rem] lg:text-[3.25rem]">
           {title}
         </motion.h2>
-        {sub && <motion.p {...rise(2)} className="mt-3 max-w-xl text-[15px] leading-relaxed text-frost-300">{sub}</motion.p>}
+        {sub && <motion.p {...rise(2)} className="measure mt-4 text-[16px] leading-[1.7] text-frost-300">{sub}</motion.p>}
       </div>
       {right && <motion.div {...rise(3)} className="flex flex-col">{right}</motion.div>}
     </div>

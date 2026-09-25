@@ -82,12 +82,16 @@ body {
   transition: background-color .4s ease, color .4s ease;
 }
 
-h1, h2, h3, .font-display { font-family: Poppins, Inter, system-ui, sans-serif; letter-spacing: -0.02em; }
-.font-serif-display { font-family: 'Playfair Display', Georgia, serif; letter-spacing: -0.01em; }
+/* Type: Playfair Display for the big editorial headings (.font-serif-display),
+   Inter for everything else. Scale on an 8px rhythm; headings tight, body
+   at 1.7 line height and a 60-70 character measure. */
+h1, h2, h3, .font-display { font-family: Inter, system-ui, sans-serif; letter-spacing: -0.015em; }
+.font-serif-display { font-family: 'Playfair Display', Georgia, serif; letter-spacing: -0.012em; font-feature-settings: 'lnum'; }
+.measure { max-width: 62ch; }
 /* Urdu: a Naskh face keeps line height close to the Latin layout */
 .font-urdu, :root[lang='ur'] body { font-family: 'Noto Naskh Arabic', Inter, system-ui, sans-serif; }
 :root[lang='ur'] h1, :root[lang='ur'] h2, :root[lang='ur'] h3, :root[lang='ur'] .font-display,
-:root[lang='ur'] .font-serif-display { font-family: 'Noto Naskh Arabic', Poppins, serif; letter-spacing: 0; }
+:root[lang='ur'] .font-serif-display { font-family: 'Noto Naskh Arabic', Inter, serif; letter-spacing: 0; }
 :root[lang='ur'] .tracking-\[\.14em\], :root[lang='ur'] .tracking-\[\.16em\],
 :root[lang='ur'] .tracking-\[\.18em\], :root[lang='ur'] .tracking-\[\.22em\] { letter-spacing: 0; }
 
@@ -121,11 +125,14 @@ body::after {
     @apply relative inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold
            transition-all duration-300 active:scale-[.97] disabled:opacity-40 disabled:pointer-events-none;
   }
+  /* One solid teal for every primary action. Only the hero's main call to
+     action (.btn-hero) wears the teal-to-gold gradient. */
   .btn-primary {
     @apply btn overflow-hidden text-abyss;
-    background: var(--btn-gradient);
-    box-shadow: 0 12px 34px -18px rgba(108,196,192,.55);
+    background: #5FB3AF;
+    box-shadow: inset 0 1px 0 rgba(255,250,240,.18);
   }
+  .btn-hero { background: var(--btn-gradient); }
   /* A soft band of light that sweeps across on hover */
   .btn-primary::after {
     content: ''; position: absolute; inset: 0; pointer-events: none;
@@ -133,7 +140,9 @@ body::after {
     transform: translateX(-120%); transition: transform .8s cubic-bezier(.22,1,.36,1);
   }
   .btn-primary:hover::after { transform: translateX(120%); }
-  .btn-primary:hover { box-shadow: 0 16px 40px -16px rgba(108,196,192,.7); transform: translateY(-1px); }
+  .btn-primary:hover { background: #6CC4C0; transform: translateY(-1px); }
+  .btn-hero:hover { background: var(--btn-gradient); filter: brightness(1.06); }
+  .btn:focus-visible { outline: 2px solid rgb(var(--glacier-300)); outline-offset: 3px; }
   .btn-ghost { @apply btn border border-white/[.08] bg-white/[.04] text-frost-100 hover:bg-white/[.08]; }
   .field {
     @apply w-full rounded-xl border border-white/[.08] bg-ink-900/70 px-4 py-3 text-sm text-frost-50

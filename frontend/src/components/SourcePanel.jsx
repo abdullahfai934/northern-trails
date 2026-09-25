@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 import { Database, RefreshCw, Wifi, WifiOff } from 'lucide-react'
 
 import { api, relTime } from '../lib/api'

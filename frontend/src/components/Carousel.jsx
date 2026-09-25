@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { motion, useAnimationFrame, useMotionValue, useReducedMotion } from 'framer-motion'
+import { motion, useAnimationFrame, useMotionValue, useReducedMotion } from 'motion/react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 /**

@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'motion/react'
 import {
   ArrowRight, CalendarDays, Check, ChevronLeft, ChevronRight, ExternalLink, Heart,
   MapPin, MessageCircle, Share2, ShieldCheck, Users, X as XIcon,

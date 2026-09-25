@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 import { Car, Fuel, Hotel, Info, Loader2, Route as RouteIcon, Ticket, UserCheck, Utensils } from 'lucide-react'
 
 import { pkr } from '../lib/api'

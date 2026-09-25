@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AnimatePresence, motion, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion, useScroll, useSpring, useTransform } from 'motion/react'
 import {
-  ArrowRight, Zap, Compass, ShieldCheck, Radio, Sparkles, AlertTriangle,
-  Route as RouteIcon, MessageSquareText, BadgeCheck, Gauge,
+  ArrowRight, Check, Compass, ShieldCheck, AlertTriangle,
+  Route as RouteIcon, MessageSquareText, Gauge,
 } from 'lucide-react'
 
 import { useData } from '../lib/store'
@@ -187,20 +187,16 @@ function Hero({ alerts = [] }) {
       {!reduce && <Mist y={mistY} x={mistX} />}
 
       <motion.div style={{ opacity: fade, x: copyX, y: copyY }} className="relative mx-auto flex min-h-[calc(100svh-4rem)] max-w-7xl flex-col justify-center px-5 py-24 sm:px-8">
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.1, ease }}>
-          <span className="chip !border-glacier-400/25 !bg-glacier-400/10 !text-glacier-200">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping2 rounded-full bg-glacier-300" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-glacier-300" />
-            </span>
-            {t('Live conditions layer · updated continuously')}
-          </span>
-        </motion.div>
+        <motion.p initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.1, ease }}
+          className="flex items-center gap-3 text-[12px] font-medium uppercase tracking-[.24em] text-frost-300">
+          <span className="h-px w-8 bg-amberz-300/70" aria-hidden="true" />
+          {t('Hunza, Skardu and Chitral')}
+        </motion.p>
 
-        <h1 className="font-serif-display mt-6 max-w-4xl text-[2.7rem] font-semibold leading-[1.06] text-frost-50 drop-shadow-[0_4px_30px_rgba(0,0,0,.45)] sm:text-6xl lg:text-[4.7rem]">
+        <h1 className="font-serif-display mt-6 max-w-4xl text-[2.75rem] font-semibold leading-[1.02] text-frost-50 drop-shadow-[0_4px_30px_rgba(0,0,0,.45)] sm:text-[4rem] lg:text-[5rem]">
           <WordReveal text={t('Book the North with')} delay={0.25} />
           <br />
-          <WordReveal text={t('facts, not Facebook groups.')} delay={0.55} className="relative inline-block text-gradient italic">
+          <WordReveal text={t('facts, not Facebook groups.')} delay={0.55} className="relative inline-block italic text-amberz-300">
             <GoldShimmer text={t('facts, not Facebook groups.')} />
           </WordReveal>
         </h1>
@@ -208,7 +204,7 @@ function Hero({ alerts = [] }) {
         <motion.p
           initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 1.05, ease }}
-          className="mt-6 max-w-xl text-[16px] leading-relaxed text-frost-300 sm:text-[17px]"
+          className="measure mt-8 text-[16px] leading-[1.7] text-frost-200 sm:text-[18px]"
         >
           {t('Compare multi-day tours from tourism-department-verified operators, or request a jeep, guide or transfer and get matched in real time. Every answer is grounded in live road status, weather and permit data.')}
         </motion.p>
@@ -216,10 +212,10 @@ function Hero({ alerts = [] }) {
         <motion.div
           initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 1.2, ease }}
-          className="mt-9 flex flex-wrap items-center gap-3"
+          className="mt-10 flex flex-wrap items-center gap-4"
         >
-          <Link to="/explore" className="btn-primary"><Compass className="h-4 w-4" /> {t('Browse packages')}</Link>
-          <Link to="/instant" className="btn-ghost"><Zap className="h-4 w-4 text-amberz-300" /> {t('Request a ride now')}</Link>
+          <Link to="/explore" className="btn-primary btn-hero !px-6 !py-3.5 !text-[15px]">{t('Browse packages')}</Link>
+          <Link to="/instant" className="btn-ghost !px-6 !py-3.5 !text-[15px]">{t('Request a ride now')}</Link>
         </motion.div>
 
         {/* Slide indicator, synced with the photo on screen */}
@@ -254,7 +250,7 @@ function Hero({ alerts = [] }) {
         {urgent && (
           <motion.div
             initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.6, duration: 0.7, ease }}
-            className="glass mt-10 flex max-w-2xl items-start gap-3 rounded-2xl border-rose-400/20 bg-rose-400/[.06] p-4"
+            className="mt-12 flex max-w-2xl items-start gap-3 border-s-2 border-rose-300/70 ps-4"
           >
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-300" />
             <div>
@@ -269,122 +265,146 @@ function Hero({ alerts = [] }) {
   )
 }
 
-/* ------------------------------------------------------------- two flows */
-const FLOWS = [
+/* ------------------------------------------------------- two ways to go */
+/**
+ * A photo that drifts a little slower than the page as it scrolls past,
+ * and settles in from a slight zoom the first time it is seen.
+ */
+function ParallaxPhoto({ query, name, className = '', strength = 36 }) {
+  const ref = useRef(null)
+  const reduce = useReducedMotion()
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] })
+  const y = useTransform(scrollYProgress, [0, 1], [-strength, strength])
+  return (
+    <motion.div ref={ref} className={`relative overflow-hidden ${className}`}
+      initial={reduce ? false : { opacity: 0, scale: 0.97 }} whileInView={{ opacity: 1, scale: 1 }}
+      viewport={{ once: true, margin: '-10% 0px' }} transition={{ duration: 0.9, ease }}>
+      <motion.div className="absolute -inset-y-12 inset-x-0" style={reduce ? undefined : { y }}>
+        <PlacePhoto query={query} name={name} count={1} large className="h-full w-full" sizes="(max-width: 1024px) 100vw, 55vw" />
+      </motion.div>
+    </motion.div>
+  )
+}
+
+const WAYS = [
   {
-    icon: Compass, tone: 'glacier',
-    kicker: 'Flow one · planned',
-    title: 'Browse & compare packages',
-    body: 'Filter 5-day Hunza and Skardu circuits, Deosai camping or a K2 trek by price, duration, pickup point and destination. Every listing carries a verified operator behind it.',
-    points: ['Transparent PKR pricing, inclusions and exclusions', 'Day-by-day itinerary with the routes it touches', 'Condition warnings surfaced before you pay'],
-    cta: ['Explore packages', '/explore'],
+    kicker: 'Plan ahead',
+    title: 'Compare tours before you commit.',
+    body: 'Five days around Hunza and Skardu, a night at Deosai, or the long walk to K2. See the price in rupees, what is included, the route each day and any road warning, side by side.',
+    points: ['Prices in PKR with inclusions spelled out', 'The day-by-day route, with the roads it uses', 'Road and weather warnings before you pay'],
+    cta: ['Browse tours', '/explore'],
+    photo: ['Passu Cones Hunza', 'Passu'],
   },
   {
-    icon: Zap, tone: 'amberz',
-    kicker: 'Flow two · on demand',
-    title: 'Request & match in real time',
-    body: 'Need a jeep to Fairy Meadows this afternoon, or a same-day guide in Karimabad? Post the request; nearby operators get it over WebSocket and bid within seconds.',
-    points: ['Nearest-operator dispatch with a response window', 'Competing offers with ETA and price', 'Live trip tracking once you accept'],
-    cta: ['Try instant match', '/instant'],
+    kicker: 'Leave today',
+    title: 'Need a jeep this afternoon?',
+    body: 'Post where you are and where you want to go. Operators nearby see the request at once, send a price and an arrival time, and you pick one. Then you can follow the trip as it happens.',
+    points: ['Sent to the three closest operators', 'Offers with price and arrival time', 'Trip progress on your phone once you accept'],
+    cta: ['Request a ride', '/instant'],
+    photo: ['Fairy Meadows jeep road', 'Fairy Meadows'],
   },
 ]
 
-function Flows() {
+function TwoWays() {
+  const dir = useDir()
   return (
-    <section className="mx-auto max-w-7xl px-5 py-20 sm:px-8">
+    <section className="mx-auto max-w-7xl px-5 py-24 sm:px-8 sm:py-32">
       <SectionTitle
-        eyebrow="Two booking models, one app"
-        title="Plan a trip months out, or find a driver in the next ten minutes."
-        sub="No existing Pakistani platform offers both. Northern Trails runs them over the same operator network and the same live data."
+        eyebrow="Two ways to go"
+        title="Plan months ahead, or find a driver in the next ten minutes."
       />
-      <Stagger className="grid gap-5 lg:grid-cols-2">
-        {FLOWS.map((f) => (
-          <Tilt key={f.title} variants={item} max={4}
-            className="glass group overflow-hidden rounded-3xl p-7 transition-colors hover:border-white/15">
-            <div className={`absolute -right-20 -top-20 h-56 w-56 rounded-full blur-3xl transition-opacity duration-700
-              ${f.tone === 'glacier' ? 'bg-glacier-400/10' : 'bg-amberz-400/10'} group-hover:opacity-160`} />
-            <div className={`mb-5 grid h-11 w-11 place-items-center rounded-xl
-              ${f.tone === 'glacier' ? 'bg-glacier-400/15 text-glacier-300' : 'bg-amberz-400/15 text-amberz-300'}`}>
-              <f.icon className="h-5 w-5" />
-            </div>
-            <div className="text-[11px] font-bold uppercase tracking-[.18em] text-frost-400">{f.kicker}</div>
-            <h3 className="mt-2 text-2xl font-extrabold tracking-tight text-frost-50">{f.title}</h3>
-            <p className="mt-3 text-[14px] leading-relaxed text-frost-300">{f.body}</p>
-            <ul className="mt-5 space-y-2.5">
-              {f.points.map((p) => (
-                <li key={p} className="flex items-start gap-2.5 text-[13px] text-frost-200">
-                  <BadgeCheck className={`mt-0.5 h-4 w-4 shrink-0 ${f.tone === 'glacier' ? 'text-glacier-300' : 'text-amberz-300'}`} />
-                  {p}
-                </li>
-              ))}
-            </ul>
-            <Link to={f.cta[1]} className="mt-7 inline-flex items-center gap-2 text-[13px] font-bold text-frost-50 transition-colors hover:text-glacier-300">
-              {f.cta[0]} <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
-            </Link>
-          </Tilt>
+      <div className="space-y-20 sm:space-y-28">
+        {WAYS.map((w, k) => (
+          <div key={w.title} className="grid items-center gap-10 lg:grid-cols-12 lg:gap-16">
+            <ParallaxPhoto query={w.photo[0]} name={w.photo[1]}
+              className={`aspect-[4/3] rounded-2xl lg:col-span-7 ${k % 2 ? 'lg:order-2' : ''}`} />
+            <motion.div className="lg:col-span-5"
+              initial={{ opacity: 0, x: (k % 2 ? -24 : 24) * dir }} whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: '-10% 0px' }} transition={{ duration: 0.8, ease }}>
+              <div className="text-[12px] font-semibold uppercase tracking-[.2em] text-amberz-300">{w.kicker}</div>
+              <h3 className="font-serif-display mt-4 text-[1.75rem] font-semibold leading-[1.15] text-frost-50 sm:text-[2.25rem]">{w.title}</h3>
+              <p className="mt-4 text-[16px] leading-[1.7] text-frost-300">{w.body}</p>
+              <ul className="mt-6 divide-y divide-white/[.07] border-y border-white/[.07]">
+                {w.points.map((pt) => (
+                  <li key={pt} className="flex items-center gap-3 py-3 text-[15px] text-frost-100">
+                    <Check className="h-4 w-4 shrink-0 text-glacier-300" aria-hidden="true" /> {pt}
+                  </li>
+                ))}
+              </ul>
+              <Link to={w.cta[1]} className="group mt-8 inline-flex items-center gap-2 text-[15px] font-semibold text-glacier-300 hover:text-glacier-200">
+                {w.cta[0]} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1 rtl:rotate-180 rtl:group-hover:-translate-x-1" aria-hidden="true" />
+              </Link>
+            </motion.div>
+          </div>
         ))}
-      </Stagger>
+      </div>
     </section>
   )
 }
 
 /* ------------------------------------------------------- live conditions */
-function ConditionsStrip({ routes = [], weather = [] }) {
+/** An editorial list of the roads, not a grid of identical cards. */
+function ConditionsList({ routes = [], weather = [] }) {
   return (
-    <section className="relative border-y border-white/[.06] bg-ink-900/30 py-20">
-      <div className="mx-auto max-w-7xl px-5 sm:px-8">
-        <SectionTitle
-          eyebrow="Live conditions layer"
-          title="Roads, weather and permits, tracked per route."
-          sub="Live weather, hazard and seismic feeds fused per route, then attached to every trip that touches it. Each record is tagged with where it came from and when."
-          right={<Link to="/conditions" className="btn-ghost !py-2.5 !text-[13px]"><Radio className="h-3.5 w-3.5" /> All routes</Link>}
-        />
-
-        <Stagger className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {routes.slice(0, 3).map((r) => (
-            <Tilt key={r.id} variants={item} className="glass overflow-hidden rounded-2xl p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-2 text-[13px] font-bold text-frost-50">
-                  <RouteIcon className="h-4 w-4 text-frost-400" />
-                  <span className="line-clamp-1">{r.name}</span>
+    <section className="border-y border-white/[.06] bg-ink-900/30">
+      <div className="mx-auto grid max-w-7xl gap-12 px-5 py-24 sm:px-8 sm:py-32 lg:grid-cols-12 lg:gap-16">
+        <div className="lg:col-span-4">
+          <SectionTitle eyebrow="Roads today"
+            title="Which roads are open, and since when."
+            sub="Every road shows its status, what is happening on it and when it was last checked. Weather comes from Open-Meteo, earthquakes from USGS." />
+          <Link to="/conditions" className="btn-ghost">All roads and weather</Link>
+          {weather.length > 0 && (
+            <ul className="mt-10 space-y-3">
+              {weather.slice(0, 4).map((w) => (
+                <li key={w.city} className="flex items-center gap-3 text-[14px]">
+                  <WeatherIcon condition={w.condition} />
+                  <span className="text-frost-100">{w.city}</span>
+                  <span className="ms-auto font-mono tabular-nums text-frost-300">{w.temp_c}°</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <Stagger className="divide-y divide-white/[.07] border-y border-white/[.07] lg:col-span-8" gap={0.06}>
+          {routes.slice(0, 5).map((r) => (
+            <motion.div key={r.id} variants={item}>
+              <Link to="/conditions" className="group grid gap-2 py-6 sm:grid-cols-[1fr_auto] sm:gap-6">
+                <div className="min-w-0">
+                  <div className="text-[17px] font-semibold text-frost-50 transition-colors group-hover:text-glacier-200">{r.name}</div>
+                  <p className="measure mt-1.5 text-[15px] leading-[1.6] text-frost-300">{r.status_note}</p>
+                  <div className="mt-2 text-[13px] text-frost-400">{r.distance_km} km, about {r.drive_hours} h · checked {relTime(r.updated_at)}</div>
                 </div>
-                <StatusPill status={r.status} />
-              </div>
-              <p className="mt-3 line-clamp-2 text-[13px] leading-relaxed text-frost-300">{r.status_note}</p>
-              <div className="mt-4 flex items-center justify-between text-[11px] text-frost-400">
-                <span>{r.distance_km} km · ~{r.drive_hours} h</span>
-                <span>{relTime(r.updated_at)}</span>
-              </div>
-              <div className="mt-3 h-1 overflow-hidden rounded-full bg-white/[.06]">
-                <motion.div
-                  style={{ width: `${r.confidence * 100}%` }}
-                  initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true }}
-                  transition={{ duration: 1.2, ease }}
-                  className={`h-full origin-left rounded-full rtl:origin-right ${STATUS[r.status]?.dot || 'bg-glacier-400'}`}
-                />
-              </div>
-              <div className="mt-1.5 text-[10px] uppercase tracking-wider text-frost-400">
-                confidence {Math.round(r.confidence * 100)}% · {r.traveler_reports} traveler reports
-              </div>
-            </Tilt>
+                <div className="sm:pt-1"><StatusPill status={r.status} /></div>
+              </Link>
+            </motion.div>
           ))}
         </Stagger>
+      </div>
+    </section>
+  )
+}
 
-        {weather.length > 0 && (
-          <Reveal delay={0.1}>
-            <div className="glass mt-4 flex gap-3 overflow-x-auto rounded-2xl p-4 no-scrollbar">
-              {weather.map((w) => (
-                <div key={w.city} className="flex min-w-[168px] shrink-0 items-center gap-3 rounded-xl bg-white/[.03] px-4 py-3">
-                  <WeatherIcon condition={w.condition} />
-                  <div>
-                    <div className="text-[12px] font-bold text-frost-50">{w.city}</div>
-                    <div className="text-[11px] text-frost-400">{w.temp_c}°C · {w.condition}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Reveal>
-        )}
+/* -------------------------------------------------- full-width photo band */
+function PhotoBand() {
+  const ref = useRef(null)
+  const reduce = useReducedMotion()
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] })
+  const y = useTransform(scrollYProgress, [0, 1], ['-12%', '12%'])
+  return (
+    <section ref={ref} className="on-photo relative isolate overflow-hidden">
+      <motion.div className="absolute -inset-y-[15%] inset-x-0 -z-10" style={reduce ? undefined : { y }} aria-hidden="true">
+        <PlacePhoto query="Attabad Lake Hunza" name="Attabad Lake" count={1} large className="h-full w-full" />
+        <div className="absolute inset-0 bg-abyss/55" />
+      </motion.div>
+      <div className="mx-auto max-w-7xl px-5 py-32 sm:px-8 sm:py-44">
+        <Reveal>
+          <p className="font-serif-display max-w-3xl text-[2rem] font-semibold leading-[1.15] text-frost-50 sm:text-[3rem]">
+            Up here a road can close by lunchtime. We check before you set off, not after.
+          </p>
+          <Link to="/conditions" className="mt-10 inline-flex items-center gap-2 text-[15px] font-semibold text-frost-50 underline decoration-amberz-300/70 underline-offset-8 hover:decoration-amberz-300">
+            See today's roads
+          </Link>
+        </Reveal>
       </div>
     </section>
   )
@@ -407,24 +427,26 @@ function BestThisWeek() {
   }
   useEffect(load, [])
   return (
-    <section className="mx-auto max-w-7xl px-5 py-20 sm:px-8">
+    <section className="mx-auto max-w-7xl px-5 py-24 sm:px-8 sm:py-32">
       <SectionTitle eyebrow={t('This week')} title={t('Best places to visit this week.')}
         sub={t('Ranked from the live forecast, road status, recent earthquakes and the season, refreshed as conditions change.')}
-        right={<Link to="/map" className="btn-ghost !py-2.5 !text-[13px]">{t('Open the map')} <ArrowRight className="h-3.5 w-3.5" /></Link>} />
+        right={<Link to="/map" className="btn-ghost">{t('Open the map')}</Link>} />
       {state.status === 'loading' && <div className="grid gap-5 md:grid-cols-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-[360px] rounded-2xl" />)}</div>}
       {state.status === 'error' && <ErrorState title={t('Recommendations are loading')} message={state.error} onRetry={load} />}
       {state.status === 'ok' && (
-        <Stagger className="grid gap-5 md:grid-cols-3" gap={0.16}>
+        <Stagger className="grid gap-6 lg:grid-cols-2 lg:grid-rows-2" gap={0.16}>
           {state.items.map((r, k) => (
-            <Tilt key={r.destination.id} variants={flipIn} whileHover={{ y: -6 }} transition={{ duration: 0.5, ease }}
+            <Tilt key={r.destination.id} variants={flipIn} max={3}
               style={{ transformPerspective: 1100, transformOrigin: '50% 0%' }}
-              className="glass group overflow-hidden rounded-2xl transition-shadow duration-500 hover:shadow-glow">
-              <div className="relative h-40 overflow-hidden">
+              className={`glass group flex flex-col overflow-hidden rounded-2xl ${k === 0 ? 'lg:row-span-2' : ''}`}>
+              <div className={`relative overflow-hidden ${k === 0 ? 'h-56 lg:h-auto lg:flex-1' : 'h-40'}`}>
                 <PlacePhoto query={r.destination.photo_query || r.destination.name} name={r.destination.name} count={1}
                             className="h-full w-full" imgClassName="group-hover:!scale-110 !duration-[1.4s]" />
                 <div className="absolute inset-0 bg-gradient-to-t from-abyss/80 to-transparent" />
-                <span className="absolute start-3 top-3 rounded-full bg-abyss/60 px-2.5 py-1 font-mono text-[11px] font-bold text-snow backdrop-blur">#{k + 1}</span>
-                <div className="absolute bottom-3 start-3 font-display text-xl font-semibold text-snow">{r.destination.name}</div>
+                <div className="absolute bottom-4 start-5">
+                  <div className="text-[12px] font-semibold uppercase tracking-[.2em] text-snow/80">No. {k + 1} this week</div>
+                  <div className={`font-serif-display font-semibold text-snow ${k === 0 ? 'text-[2.25rem]' : 'text-[1.5rem]'}`}>{r.destination.name}</div>
+                </div>
               </div>
               <div className="flex items-center gap-4 p-5">
                 <SafetyGauge score={r.safety.score} color={r.safety.color} label={t(r.safety.label)} size={104} stroke={9} />
@@ -454,13 +476,13 @@ function BestThisWeek() {
 /* ------------------------------------------------------------- packages */
 function Featured({ packages = [] }) {
   return (
-    <section className="py-20">
+    <section className="py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <SectionTitle
-          eyebrow="Verified operators"
-          title="Hand-checked trips across the North."
-          sub="Every operator is matched against a tourism-department registration before a listing goes live. Hover to pause, swipe to browse."
-          right={<Link to="/explore" className="btn-ghost !py-2.5 !text-[13px]">See all {packages.length} trips <ArrowRight className="h-3.5 w-3.5" /></Link>}
+          eyebrow="Tours"
+          title="Trips run by local operators."
+          sub="Hunza, Skardu, Deosai, Fairy Meadows and Chitral, with the operator named on every trip. Hover to pause, swipe to browse."
+          right={<Link to="/explore" className="btn-ghost">See all {packages.length} trips</Link>}
         />
       </div>
       <Reveal className="mx-auto max-w-[1600px] px-1 sm:px-4">
@@ -483,30 +505,28 @@ function AssistantTeaser({ suggestions = [] }) {
   }, [suggestions.length])
 
   return (
-    <section className="mx-auto max-w-7xl px-5 py-20 sm:px-8">
-      <div className="glass relative overflow-hidden rounded-3xl p-7 sm:p-12">
-        <div className="absolute -left-24 -top-24 h-72 w-72 animate-float rounded-full bg-glacier-400/10 blur-3xl" />
-        <div className="absolute -bottom-28 -right-24 h-72 w-72 animate-float rounded-full bg-amberz-400/10 blur-3xl" style={{ animationDelay: '2s' }} />
-        <div className="relative grid gap-10 lg:grid-cols-2 lg:items-center">
+    <section className="mx-auto max-w-7xl px-5 py-24 sm:px-8 sm:py-32">
+      <div className="relative">
+        <div className="relative grid gap-12 lg:grid-cols-2 lg:items-center lg:gap-20">
           <div>
-            <div className="mb-3 flex items-center gap-2.5">
-              <span className="h-px w-8 bg-gradient-to-r from-glacier-400 to-transparent" />
-              <span className="text-[11px] font-bold uppercase tracking-[.22em] text-glacier-300">Grounded AI assistant</span>
+            <div className="mb-4 flex items-center gap-3">
+              <span className="h-px w-8 bg-glacier-400/70" aria-hidden="true" />
+              <span className="text-[12px] font-semibold uppercase tracking-[.2em] text-glacier-300">Ask before you go</span>
             </div>
-            <h2 className="text-3xl font-extrabold leading-tight tracking-tight text-frost-50 sm:text-[2.5rem]">
-              It answers from live records, or admits it doesn't know.
+            <h2 className="font-serif-display text-[2rem] font-semibold leading-[1.08] text-frost-50 sm:text-[2.75rem]">
+              It answers from today's records, or tells you it doesn't know.
             </h2>
-            <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-frost-300">
-              A retrieval pipeline packs the current road status, weather, permits and verified
-              operator rows into the prompt, and the model may only phrase what is in that pack.
-              Every reply carries the record ids it used.
+            <p className="measure mt-5 text-[16px] leading-[1.7] text-frost-300">
+              Ask about the Skardu road, a cheap three-day Hunza trip or where to eat in Karimabad.
+              The assistant only sees the current road, weather, hazard and tour records, and every
+              reply lists the records it used.
             </p>
-            <div className="mt-6 flex flex-wrap gap-2">
-              {['No invented closures', 'Cited sources', 'Timestamped data', 'Refuses outside context'].map((t) => (
-                <span key={t} className="chip"><ShieldCheck className="h-3 w-3 text-glacier-300" /> {t}</span>
+            <ul className="mt-6 grid gap-x-8 gap-y-2 text-[15px] text-frost-200 sm:grid-cols-2">
+              {['No made-up road closures', 'Sources listed on every reply', 'Every record timestamped', 'Says so when it has no data'].map((t) => (
+                <li key={t} className="flex items-center gap-2.5"><Check className="h-4 w-4 shrink-0 text-glacier-300" aria-hidden="true" /> {t}</li>
               ))}
-            </div>
-            <Link to="/assistant" className="btn-primary mt-8"><Sparkles className="h-4 w-4" /> Ask the assistant</Link>
+            </ul>
+            <Link to="/assistant" className="btn-primary mt-10">Ask about a road or a trip</Link>
           </div>
 
           <TurnIn className="glass-strong rounded-2xl p-5">
@@ -692,9 +712,10 @@ export default function Home() {
         </div>
       </WhenNear>
       {/* Below the fold: each section mounts as the visitor scrolls near it. */}
-      <WhenNear minHeight={720} margin="0px 0px 60px 0px"><Flows /></WhenNear>
-      <WhenNear minHeight={640}><ConditionsStrip routes={d.routes} weather={d.weather} /></WhenNear>
-      <WhenNear minHeight={680}><BestThisWeek /></WhenNear>
+      <WhenNear minHeight={1400} margin="0px 0px 60px 0px"><TwoWays /></WhenNear>
+      <WhenNear minHeight={900}><ConditionsList routes={d.routes} weather={d.weather} /></WhenNear>
+      <WhenNear minHeight={560}><PhotoBand /></WhenNear>
+      <WhenNear minHeight={760}><BestThisWeek /></WhenNear>
       <WhenNear minHeight={700}><Featured packages={d.packages} /></WhenNear>
       <WhenNear minHeight={720}><AssistantTeaser suggestions={d.suggestions} /></WhenNear>
       <WhenNear minHeight={420}><Stats operators={d.operators} destinations={d.destinations} packages={d.packages} /></WhenNear>

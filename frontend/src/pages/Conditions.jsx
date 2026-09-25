@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'motion/react'
 import {
   AlertTriangle, FileCheck2, Mountain, Route as RouteIcon,
   ShieldAlert, Wind, Eye, Droplets, Gauge, ChevronDown, Loader2,

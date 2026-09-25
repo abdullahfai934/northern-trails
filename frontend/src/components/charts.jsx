@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { motion, useInView, useReducedMotion } from 'framer-motion'
+import { motion, useInView, useReducedMotion } from 'motion/react'
 import { AlertTriangle, CheckCircle2, OctagonAlert } from 'lucide-react'
 import { ease } from './ui'
 
